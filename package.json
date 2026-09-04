@@ -1,0 +1,91 @@
+{
+  "name": "@orange-groove/react-map-gl-annotate",
+  "version": "0.1.0",
+  "description": "Draw on react-map-gl (Mapbox): freehand, arrows, shapes, geodesic measure, and labeled markers — with your React state and your toolbar.",
+  "license": "MIT",
+  "author": "orange-groove",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orange-groove/react-map-gl-annotate.git"
+  },
+  "homepage": "https://github.com/orange-groove/react-map-gl-annotate#readme",
+  "bugs": {
+    "url": "https://github.com/orange-groove/react-map-gl-annotate/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "tsup && cp src/styles.css dist/styles.css",
+    "dev": "tsup --watch",
+    "prepare": "tsup && cp src/styles.css dist/styles.css",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "mapbox-gl": ">=3",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "react-map-gl": ">=8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/geojson": "^7946.0.16",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
+    "mapbox-gl": "^3.29.0",
+    "prettier": "^3.9.6",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-map-gl": "^8.1.2",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^3.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "react-map-gl",
+    "mapbox",
+    "mapbox-gl",
+    "draw",
+    "drawing",
+    "annotate",
+    "annotation",
+    "measure",
+    "haversine",
+    "geodesic",
+    "geojson"
+  ]
+}

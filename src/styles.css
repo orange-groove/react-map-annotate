@@ -1,0 +1,245 @@
+.rmga-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  pointer-events: auto;
+}
+
+.rmga-toolbar--vertical {
+  flex-direction: column;
+}
+
+.rmga-toolbar--horizontal {
+  flex-direction: row;
+}
+
+.rmga-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+}
+
+.rmga-tool:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.rmga-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rmga-tool--active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.rmga-tool--danger:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rmga-tool--danger:not(:disabled):hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.rmga-label {
+  transform: translateY(-6px);
+  pointer-events: auto;
+}
+
+.rmga-label-text,
+.rmga-label-input {
+  display: block;
+  max-width: 220px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font:
+    600 11px/1.4 system-ui,
+    sans-serif;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.rmga-label-text {
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rmga-label--selected .rmga-label-text,
+.rmga-label--selected .rmga-label-input {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+}
+
+.rmga-label-input {
+  width: 140px;
+  outline: none;
+}
+
+.rmga-handle {
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.rmga-vertex {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
+  cursor: grab;
+}
+
+.rmga-vertex--first {
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+.rmga-resize {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #1d4ed8;
+  cursor: nwse-resize;
+  filter: drop-shadow(0 0 1px #ffffff)
+    drop-shadow(0 1px 1px rgba(15, 23, 42, 0.35));
+}
+
+.rmga-list {
+  width: 260px;
+  max-height: 100%;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  pointer-events: auto;
+  color: #0f172a;
+}
+
+.rmga-list-heading {
+  margin: 0 0 8px;
+  font:
+    650 12px/1.3 system-ui,
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rmga-list-empty {
+  margin: 0;
+  padding: 10px 2px;
+  color: #94a3b8;
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
+}
+
+.rmga-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rmga-list-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+}
+
+.rmga-list-color {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rmga-list-color::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+
+.rmga-list-color::-webkit-color-swatch {
+  border: 0;
+  border-radius: 5px;
+}
+
+.rmga-list-fields {
+  min-width: 0;
+}
+
+.rmga-list-kind {
+  display: block;
+  margin-bottom: 2px;
+  color: #64748b;
+  font:
+    600 10px/1.2 system-ui,
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.rmga-list-label {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #f8fafc;
+  color: #0f172a;
+  font:
+    600 12px/1.4 system-ui,
+    sans-serif;
+}
+
+.rmga-list-label:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 0;
+  background: #ffffff;
+}
+
+.rmga-list-delete {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  font:
+    400 18px/1 system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+
+.rmga-list-delete:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
