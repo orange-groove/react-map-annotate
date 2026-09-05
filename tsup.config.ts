@@ -1,7 +1,14 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: {
+    index: "src/index.ts",
+    mapbox: "src/mapbox.ts",
+    maplibre: "src/maplibre.ts",
+    google: "src/google.ts",
+    leaflet: "src/leaflet.ts",
+    arcgis: "src/arcgis.ts",
+  },
   format: ["esm", "cjs"],
   dts: true,
   sourcemap: true,
@@ -13,6 +20,12 @@ export default defineConfig({
     "react/jsx-runtime",
     "react-map-gl",
     "react-map-gl/mapbox",
+    "react-map-gl/maplibre",
+    "@vis.gl/react-google-maps",
     "mapbox-gl",
+    "maplibre-gl",
+    "leaflet",
+    "react-leaflet",
+    "@arcgis/core",
   ],
 });

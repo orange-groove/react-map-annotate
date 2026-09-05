@@ -57,7 +57,13 @@ export {
   circleResizeHandle,
   drawBoundsRing,
   editableVertices,
+  movePathEndpoint,
+  editHandlesFor,
+  hitEditHandle,
+  applyEditHandle,
+  editHandleCursor,
 } from "./edit";
+export type { PathEndpoint, EditHandleHit } from "./edit";
 
 export {
   buildAnnotationFeatures,
@@ -65,6 +71,8 @@ export {
   draftPolygonPreview,
 } from "./features";
 export type { ArrowMarker, AnnotationFeatures } from "./features";
+
+export { hitTestAnnotations, distanceToSegment, pointInRing } from "./hit-test";
 
 export {
   isUiTarget,

@@ -6,7 +6,7 @@ export function isUiTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest(
-      "[data-rmga-label], [data-rmga-handle], .mapboxgl-marker, .rmga-toolbar, input, textarea",
+      "[data-rmga-label], [data-rmga-handle], .mapboxgl-marker, .maplibregl-marker, .leaflet-marker-icon, .rmga-overlay-marker, .rmga-toolbar, input, textarea",
     ),
   );
 }
@@ -40,7 +40,7 @@ export function eventLngLat(event: {
 
 export function clientToLngLat(
   map: {
-    getCanvas: () => HTMLCanvasElement;
+    getCanvas: () => HTMLElement;
     unproject: (point: [number, number]) => { lng: number; lat: number };
   },
   clientX: number,

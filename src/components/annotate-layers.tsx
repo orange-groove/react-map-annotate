@@ -1,16 +1,17 @@
 "use client";
 
-import { Layer, Marker, Source } from "react-map-gl/mapbox";
 import {
   DEFAULT_COLOR,
   DEFAULT_STROKE_WIDTH,
   LAYER_IDS,
   SOURCE_IDS,
 } from "../constants";
+import { useMapGl } from "../gl/context";
 import type { AnnotateProps, Annotation } from "../types";
 import { labelAnchor } from "../utils/annotations";
 import { buildAnnotationFeatures } from "../utils/features";
 import { AnnotationLabel } from "./annotation-label";
+import { AnnotationMarker } from "./annotation-marker";
 import { DefaultArrowHead } from "./arrow-head";
 import { DraftVertices, EditHandles } from "./edit-handles";
 
@@ -43,6 +44,7 @@ export function AnnotateLayers({
   hoveredId?: string | null;
   onHandleDragEnd?: (id: string) => void;
 }) {
+  const { Source, Layer, Marker } = useMapGl();
   const color = defaultColor ?? DEFAULT_COLOR;
   const strokeWidth = defaultStrokeWidth ?? DEFAULT_STROKE_WIDTH;
   const { lines, fills, dashed, bounds, samples, arrows, markers } =
@@ -172,26 +174,25 @@ export function AnnotateLayers({
       ))}
 
       {markers.map((annotation) => (
-        <Marker
+        <AnnotationMarker
           key={`marker-${annotation.id}`}
-          longitude={annotation.coordinate[0]}
-          latitude={annotation.coordinate[1]}
-          color={annotation.style?.color ?? color}
-          scale={selectedId === annotation.id ? 1.15 : 1}
-          onClick={(event) => {
-            event.originalEvent.stopPropagation();
-            onSelect?.(annotation.id);
-          }}
+          annotation={annotation}
+          selected={selectedId === annotation.id}
+          color={color}
+          onSelect={onSelect}
+          onUpdate={onUpdate}
+          onDragEnd={onHandleDragEnd}
         />
       ))}
 
       {draft?.kind === "polygon" ? (
-        <DraftVertices coordinates={draft.coordinates} />
+        <DraftVertices coordinates={draft.coordinates} color={color} />
       ) : null}
 
       <EditHandles
         annotations={annotations}
         activeId={handleId}
+        defaultColor={color}
         onUpdate={onUpdate}
         onDragEnd={onHandleDragEnd}
       />
@@ -207,7 +208,7 @@ export function AnnotateLayers({
             latitude={anchor[1]}
             selected={annotation.id === selectedId}
             editable={labelsEditable}
-            offset={annotation.kind === "marker" ? [0, -30] : [0, -8]}
+            offset={annotation.kind === "marker" ? [0, -56] : [0, -8]}
             onSelect={onSelect}
             onLabelChange={onLabelChange}
           />

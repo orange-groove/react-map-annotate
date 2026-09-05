@@ -1,15 +1,9 @@
-import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { TestMapGl } from "../test/map-gl";
 import type { Annotation } from "../types";
 import { AnnotationLabel } from "./annotation-label";
-
-vi.mock("react-map-gl/mapbox", () => ({
-  Marker: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="marker">{children}</div>
-  ),
-}));
 
 const annotation: Annotation = {
   id: "line-1",
@@ -24,29 +18,49 @@ const annotation: Annotation = {
 describe("AnnotationLabel", () => {
   it("renders the controlled label", () => {
     render(
-      <AnnotationLabel
-        annotation={annotation}
-        longitude={0}
-        latitude={0}
-        selected
-        editable
-      />,
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={annotation}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+        />
+      </TestMapGl>,
     );
     expect(screen.getByRole("button", { name: "Route" })).toBeTruthy();
+  });
+
+  it("renders nothing when the label is blank", () => {
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={{ ...annotation, label: "  " }}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+        />
+      </TestMapGl>,
+    );
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText("Label")).toBeNull();
   });
 
   it("commits an edited label through onLabelChange", async () => {
     const onLabelChange = vi.fn();
     const user = userEvent.setup();
     render(
-      <AnnotationLabel
-        annotation={annotation}
-        longitude={0}
-        latitude={0}
-        selected
-        editable
-        onLabelChange={onLabelChange}
-      />,
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={annotation}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+          onLabelChange={onLabelChange}
+        />
+      </TestMapGl>,
     );
     await user.dblClick(screen.getByText("Route"));
     const input = screen.getByLabelText("Annotation label");

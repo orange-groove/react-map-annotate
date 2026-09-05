@@ -1,4 +1,3 @@
-import type { Map as MapboxMap } from "mapbox-gl";
 import { SAMPLE_INTERVAL_METERS } from "../constants";
 import {
   densifyPath,
@@ -8,7 +7,12 @@ import {
 } from "./geo";
 import type { ElevationSample, LngLat, Measurement } from "../types";
 
-export type TerrainMap = Pick<MapboxMap, "queryTerrainElevation">;
+export type TerrainMap = {
+  queryTerrainElevation?: (
+    lngLat: { lng: number; lat: number },
+    options?: { exaggerated?: boolean },
+  ) => number | null | undefined;
+};
 
 export function queryGroundElevation(
   map: TerrainMap | null | undefined,

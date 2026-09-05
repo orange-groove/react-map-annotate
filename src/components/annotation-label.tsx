@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Marker } from "react-map-gl/mapbox";
+import { useMapGl } from "../gl/context";
 import type { Annotation } from "../types";
 
 export function AnnotationLabel({
@@ -23,6 +23,7 @@ export function AnnotationLabel({
   onSelect?: (id: string) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
 }) {
+  const { Marker } = useMapGl();
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState(annotation.label);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -42,6 +43,8 @@ export function AnnotationLabel({
       onLabelChange?.(annotation.id, next, { ...annotation, label: next });
     }
   }
+
+  if (!editing && !annotation.label.trim()) return null;
 
   return (
     <Marker
@@ -90,7 +93,7 @@ export function AnnotationLabel({
               onSelect?.(annotation.id);
             }}
           >
-            {annotation.label || "Label"}
+            {annotation.label}
           </button>
         )}
       </div>

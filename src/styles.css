@@ -1,5 +1,6 @@
 .rmga-toolbar {
   display: flex;
+  width: max-content;
   gap: 2px;
   padding: 4px;
   border-radius: 10px;
@@ -55,6 +56,85 @@
   color: #b91c1c;
 }
 
+.rmga-google-overlay,
+.rmga-arcgis-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rmga-arcgis-overlay {
+  z-index: 1;
+}
+
+/* Keep Esri view stacking inside the map, not over host chrome. */
+.esri-view {
+  z-index: 0;
+}
+
+.rmga-overlay-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  width: 1px;
+  height: 1px;
+}
+
+.rmga-overlay-marker {
+  display: block;
+  width: max-content;
+  height: max-content;
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.rmga-marker-hit {
+  display: block;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.rmga-marker-hit:active {
+  cursor: grabbing;
+}
+
+.rmga-leaflet-marker.leaflet-div-icon,
+.rmga-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: visible !important;
+}
+
+/* Keep Leaflet pane z-indexes (400–1000) inside the map, not over host chrome. */
+.leaflet-container {
+  z-index: 0;
+}
+
+gmp-advanced-marker {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: auto !important;
+}
+
+.rmga-google-sample {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
 .rmga-label {
   transform: translateY(-6px);
   pointer-events: auto;
@@ -94,22 +174,24 @@
 }
 
 .rmga-handle {
+  --rmga-handle-color: #2563eb;
   pointer-events: auto;
   box-sizing: border-box;
+  cursor: move;
 }
 
 .rmga-vertex {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  border: 2px solid #2563eb;
+  border: 2px solid var(--rmga-handle-color);
   background: #ffffff;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
-  cursor: grab;
+  cursor: move;
 }
 
 .rmga-vertex--first {
-  box-shadow: 0 0 0 2px #38bdf8;
+  box-shadow: 0 0 0 2px var(--rmga-handle-color);
 }
 
 .rmga-resize {
@@ -117,10 +199,17 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  color: #1d4ed8;
+  border-radius: 50%;
+  border: 2px solid var(--rmga-handle-color);
+  background: #ffffff;
+  color: var(--rmga-handle-color);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
   cursor: nwse-resize;
-  filter: drop-shadow(0 0 1px #ffffff)
-    drop-shadow(0 1px 1px rgba(15, 23, 42, 0.35));
+  line-height: 0;
+}
+
+.rmga-resize svg {
+  display: block;
 }
 
 .rmga-list {

@@ -1,16 +1,16 @@
 {
-  "name": "@orange-groove/react-map-gl-annotate",
+  "name": "@orange-groove/react-map-annotate",
   "version": "0.1.0",
-  "description": "Draw on react-map-gl (Mapbox): freehand, arrows, shapes, geodesic measure, and labeled markers — with your React state and your toolbar.",
+  "description": "Draw on Mapbox, MapLibre, Google Maps, Leaflet, or ArcGIS in React: freehand, arrows, shapes, geodesic measure, and labeled markers — with your React state and your toolbar.",
   "license": "MIT",
   "author": "orange-groove",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/orange-groove/react-map-gl-annotate.git"
+    "url": "git+https://github.com/orange-groove/react-map-annotate.git"
   },
-  "homepage": "https://github.com/orange-groove/react-map-gl-annotate#readme",
+  "homepage": "https://github.com/orange-groove/react-map-annotate#readme",
   "bugs": {
-    "url": "https://github.com/orange-groove/react-map-gl-annotate/issues"
+    "url": "https://github.com/orange-groove/react-map-annotate/issues"
   },
   "type": "module",
   "main": "./dist/index.cjs",
@@ -22,11 +22,37 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./mapbox": {
+      "types": "./dist/mapbox.d.ts",
+      "import": "./dist/mapbox.js",
+      "require": "./dist/mapbox.cjs"
+    },
+    "./maplibre": {
+      "types": "./dist/maplibre.d.ts",
+      "import": "./dist/maplibre.js",
+      "require": "./dist/maplibre.cjs"
+    },
+    "./google": {
+      "types": "./dist/google.d.ts",
+      "import": "./dist/google.js",
+      "require": "./dist/google.cjs"
+    },
+    "./leaflet": {
+      "types": "./dist/leaflet.d.ts",
+      "import": "./dist/leaflet.js",
+      "require": "./dist/leaflet.cjs"
+    },
+    "./arcgis": {
+      "types": "./dist/arcgis.d.ts",
+      "import": "./dist/arcgis.js",
+      "require": "./dist/arcgis.cjs"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "examples"
   ],
   "sideEffects": [
     "**/*.css"
@@ -44,28 +70,62 @@
     "test": "vitest run"
   },
   "peerDependencies": {
+    "@arcgis/core": ">=4.28",
+    "@vis.gl/react-google-maps": ">=1",
+    "leaflet": ">=1.9",
     "mapbox-gl": ">=3",
+    "maplibre-gl": ">=4",
     "react": ">=18",
     "react-dom": ">=18",
+    "react-leaflet": ">=4",
     "react-map-gl": ">=8"
+  },
+  "peerDependenciesMeta": {
+    "mapbox-gl": {
+      "optional": true
+    },
+    "maplibre-gl": {
+      "optional": true
+    },
+    "@vis.gl/react-google-maps": {
+      "optional": true
+    },
+    "leaflet": {
+      "optional": true
+    },
+    "react-leaflet": {
+      "optional": true
+    },
+    "react-map-gl": {
+      "optional": true
+    },
+    "@arcgis/core": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/geojson": "^7946.0.16",
+    "@types/google.maps": "^3.66.2",
+    "@types/leaflet": "^1.9.21",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vis.gl/react-google-maps": "^1.10.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^16.5.0",
     "jsdom": "^29.1.1",
+    "leaflet": "^1.9.4",
     "mapbox-gl": "^3.29.0",
+    "maplibre-gl": "^5.24.0",
     "prettier": "^3.9.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-leaflet": "^5.0.0",
     "react-map-gl": "^8.1.2",
     "tsup": "^8.4.0",
     "typescript": "^5.8.0",
@@ -76,9 +136,17 @@
     "access": "public"
   },
   "keywords": [
+    "react-map-annotate",
     "react-map-gl",
     "mapbox",
     "mapbox-gl",
+    "maplibre",
+    "maplibre-gl",
+    "google-maps",
+    "leaflet",
+    "react-leaflet",
+    "arcgis",
+    "arcgis-js",
     "draw",
     "drawing",
     "annotate",

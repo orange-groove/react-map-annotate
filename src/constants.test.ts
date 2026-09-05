@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LAYER_PREFIX,
+  MAPBOX_TERRAIN_DEM,
   isAnnotateLayerId,
   isClickVertexTool,
   isDragTool,
@@ -31,5 +32,6 @@ describe("isAnnotateLayerId", () => {
     expect(isAnnotateLayerId(`${LAYER_PREFIX}-line`)).toBe(true);
     expect(isAnnotateLayerId("active-route-line")).toBe(false);
     expect(isAnnotateLayerId(undefined)).toBe(false);
+    expect(MAPBOX_TERRAIN_DEM).toContain("mapbox-terrain-dem");
   });
 });

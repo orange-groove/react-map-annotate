@@ -88,6 +88,14 @@ export interface AnnotateCallbacks {
   onColorChange?: (id: string, color: string, annotation: Annotation) => void;
 }
 
+export interface TerrainSourceOptions {
+  url?: string;
+  tiles?: string[];
+  tileSize?: number;
+  maxzoom?: number;
+  exaggeration?: number;
+}
+
 export interface AnnotateProps extends AnnotateCallbacks {
   annotations?: Annotation[];
   draft?: DraftAnnotation | null;
@@ -97,6 +105,7 @@ export interface AnnotateProps extends AnnotateCallbacks {
   defaultStrokeWidth?: number;
   sampleIntervalMeters?: number;
   enableTerrain?: boolean;
+  terrainSource?: TerrainSourceOptions;
   interactive?: boolean;
   labelsEditable?: boolean;
   renderArrowHead?: (props: ArrowHeadRenderProps) => ReactNode;

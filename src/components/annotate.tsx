@@ -1,8 +1,6 @@
 "use client";
 
-import type { MapMouseEvent } from "mapbox-gl";
 import * as React from "react";
-import { Source, useMap } from "react-map-gl/mapbox";
 import { useAnnotate } from "../context/annotate-context";
 import {
   DEFAULT_COLOR,
@@ -13,14 +11,24 @@ import {
   isDragTool,
   isDrawingTool,
 } from "../constants";
-import type { AnnotateProps, DraftAnnotation } from "../types";
+import { useMapGl } from "../gl/context";
+import { resolveTerrainSource } from "../gl/terrain";
+import type { MapLike, MapPoint, MapPointerEvent } from "../gl/types";
+import type { AnnotateProps, Annotation, DraftAnnotation } from "../types";
 import {
   annotationFromDraft,
   canFinishDraft,
   committedDraftCoordinates,
   minVerticesForKind,
 } from "../utils/annotations";
-import { moveAnnotation } from "../utils/edit";
+import {
+  applyEditHandle,
+  editHandleCursor,
+  editHandlesFor,
+  hitEditHandle,
+  moveAnnotation,
+  type EditHandleHit,
+} from "../utils/edit";
 import { haversineDistance } from "../utils/geo";
 import {
   eventLngLat,
@@ -29,19 +37,57 @@ import {
   lastTwoEqual,
   nearFirstVertex,
 } from "../utils/interaction";
+import { hitTestAnnotations } from "../utils/hit-test";
 import { AnnotateLayers } from "./annotate-layers";
 
+function annotationHandleAt(
+  map: MapLike,
+  point: MapPoint,
+  annotation: Annotation | undefined,
+) {
+  if (!annotation) return null;
+  return hitEditHandle((lngLat) => map.project(lngLat), point, annotation);
+}
+
+function resolveHandleTarget(
+  map: MapLike,
+  point: MapPoint,
+  items: Annotation[],
+  hoverId: string | null,
+  bodyId: string | null,
+): { annotation: Annotation; handle: EditHandleHit } | null {
+  const hover = hoverId ? items.find((item) => item.id === hoverId) : undefined;
+  const hoverHandle = annotationHandleAt(map, point, hover);
+  if (hover && hoverHandle) {
+    return { annotation: hover, handle: hoverHandle };
+  }
+  if (bodyId && bodyId !== hoverId) {
+    const body = items.find((item) => item.id === bodyId);
+    const bodyHandle = annotationHandleAt(map, point, body);
+    if (body && bodyHandle) {
+      return { annotation: body, handle: bodyHandle };
+    }
+  }
+  return null;
+}
+
 function hitAnnotationId(
-  map: MapMouseEvent["target"],
-  point: MapMouseEvent["point"],
+  map: MapLike,
+  point: MapPoint,
+  annotations: Annotation[],
 ) {
   const layers = SELECTABLE_LAYER_IDS.filter((id) => Boolean(map.getLayer(id)));
-  if (layers.length === 0) return null;
-  const id = map.queryRenderedFeatures(point, { layers })[0]?.properties?.id;
-  if (typeof id !== "string" || id === "draft" || id.startsWith("draft-")) {
-    return null;
+  if (layers.length > 0) {
+    const id = map.queryRenderedFeatures(point, { layers })[0]?.properties?.id;
+    if (typeof id === "string" && id !== "draft" && !id.startsWith("draft-")) {
+      return id;
+    }
   }
-  return id;
+  return hitTestAnnotations(
+    (lngLat) => map.project(lngLat),
+    point,
+    annotations,
+  );
 }
 
 export function Annotate({
@@ -53,6 +99,7 @@ export function Annotate({
   defaultStrokeWidth,
   sampleIntervalMeters = SAMPLE_INTERVAL_METERS,
   enableTerrain = false,
+  terrainSource,
   interactive = true,
   labelsEditable = true,
   renderArrowHead,
@@ -69,15 +116,23 @@ export function Annotate({
   const draft = draftProp ?? session.draft;
   const tool = toolProp ?? session.tool;
   const selectedId = selectedIdProp ?? session.selectedId;
+  const { Source, useMap, engine, Layers } = useMapGl();
+  const PaintLayers = Layers ?? AnnotateLayers;
   const maps = useMap();
   const dragRef = React.useRef(false);
   const [hoveredId, setHoveredId] = React.useState<string | null>(null);
+  const hoverIdRef = React.useRef<string | null>(null);
+  const setHoverId = React.useCallback((id: string | null) => {
+    hoverIdRef.current = id;
+    setHoveredId(id);
+  }, []);
   const suppressClickRef = React.useRef(false);
-  const ignoreHoverIdRef = React.useRef<string | null>(null);
   const editRef = React.useRef<{
     id: string;
     start: ReturnType<typeof eventLngLat>;
     original: (typeof annotations)[number];
+    handle?: EditHandleHit;
+    handleAt?: ReturnType<typeof eventLngLat>;
   } | null>(null);
 
   const onAdd = onAddProp ?? session.onAdd;
@@ -181,7 +236,7 @@ export function Annotate({
         map.getCanvas().style.cursor = "";
       }
 
-      const onMouseDown = (event: MapMouseEvent) => {
+      const onMouseDown = (event: MapPointerEvent) => {
         if (event.originalEvent.button !== 0) return;
         if (isUiTarget(event.originalEvent.target)) return;
         const {
@@ -189,7 +244,38 @@ export function Annotate({
           draft: current,
           annotations: items,
         } = latestRef.current;
-        const hitId = current ? null : hitAnnotationId(map, event.point);
+        const hitId = current ? null : hitAnnotationId(map, event.point, items);
+        const handleTarget = current
+          ? null
+          : resolveHandleTarget(
+              map,
+              event.point,
+              items,
+              hoverIdRef.current,
+              hitId,
+            );
+        if (handleTarget) {
+          const handleAt = editHandlesFor(handleTarget.annotation, (lngLat) =>
+            map.project(lngLat),
+          ).find(
+            (item) =>
+              item.kind === handleTarget.handle.kind &&
+              item.index === handleTarget.handle.index,
+          )?.coordinate;
+          editRef.current = {
+            id: handleTarget.annotation.id,
+            start: eventLngLat(event),
+            original: handleTarget.annotation,
+            handle: handleTarget.handle,
+            handleAt,
+          };
+          suppressClickRef.current = false;
+          latestRef.current.onSelect?.(handleTarget.annotation.id);
+          setHoverId(handleTarget.annotation.id);
+          map.dragPan.disable();
+          map.getCanvas().style.cursor = editHandleCursor(handleTarget.handle);
+          return;
+        }
         if (hitId) {
           const original = items.find((item) => item.id === hitId);
           if (original) {
@@ -200,7 +286,7 @@ export function Annotate({
             };
             suppressClickRef.current = false;
             latestRef.current.onSelect?.(hitId);
-            setHoveredId(hitId);
+            setHoverId(hitId);
             map.dragPan.disable();
             map.getCanvas().style.cursor = "grabbing";
             return;
@@ -215,7 +301,7 @@ export function Annotate({
         });
       };
 
-      const onMouseMove = (event: MapMouseEvent) => {
+      const onMouseMove = (event: MapPointerEvent) => {
         const { tool: activeTool, draft: current } = latestRef.current;
         const point = eventLngLat(event);
         const edit = editRef.current;
@@ -223,24 +309,40 @@ export function Annotate({
           if (haversineDistance(edit.start, point) > 1) {
             suppressClickRef.current = true;
           }
-          latestRef.current.onUpdate?.(
-            moveAnnotation(edit.original, edit.start, point),
-          );
-          map.getCanvas().style.cursor = "grabbing";
+          if (edit.handle) {
+            latestRef.current.onUpdate?.(
+              applyEditHandle(edit.original, edit.handle, point, {
+                map,
+                from: edit.start,
+                handleAt: edit.handleAt,
+              }),
+            );
+            map.getCanvas().style.cursor = editHandleCursor(edit.handle);
+          } else {
+            latestRef.current.onUpdate?.(
+              moveAnnotation(edit.original, edit.start, point),
+            );
+            map.getCanvas().style.cursor = "grabbing";
+          }
           return;
         }
         if (!current) {
-          const nextHover = hitAnnotationId(map, event.point);
-          if (nextHover && nextHover === ignoreHoverIdRef.current) {
-            setHoveredId(null);
-            map.getCanvas().style.cursor = isDrawingTool(activeTool)
-              ? "crosshair"
-              : "";
-            return;
-          }
-          if (!nextHover) ignoreHoverIdRef.current = null;
-          setHoveredId(nextHover);
-          if (nextHover) {
+          const items = latestRef.current.annotations;
+          const nextHover = hitAnnotationId(map, event.point, items);
+          const handleTarget = resolveHandleTarget(
+            map,
+            event.point,
+            items,
+            hoverIdRef.current,
+            nextHover,
+          );
+          const activeId = handleTarget?.annotation.id ?? nextHover;
+          setHoverId(activeId);
+          if (handleTarget) {
+            map.getCanvas().style.cursor = editHandleCursor(
+              handleTarget.handle,
+            );
+          } else if (nextHover) {
             map.getCanvas().style.cursor = "grab";
           } else if (isDrawingTool(activeTool)) {
             map.getCanvas().style.cursor = "crosshair";
@@ -278,11 +380,11 @@ export function Annotate({
         }
       };
 
-      const onMouseUp = (event: MapMouseEvent) => {
+      const onMouseUp = (event: MapPointerEvent) => {
         if (editRef.current) {
-          ignoreHoverIdRef.current = editRef.current.id;
+          const editedId = editRef.current.id;
           editRef.current = null;
-          setHoveredId(null);
+          setHoverId(editedId);
           if (!isDrawingTool(latestRef.current.tool)) {
             map.dragPan.enable();
             map.getCanvas().style.cursor = "";
@@ -309,7 +411,7 @@ export function Annotate({
         commitDraft(next);
       };
 
-      const onClick = (event: MapMouseEvent) => {
+      const onClick = (event: MapPointerEvent) => {
         if (isUiTarget(event.originalEvent.target)) return;
         if (
           suppressClickRef.current ||
@@ -318,9 +420,13 @@ export function Annotate({
           suppressClickRef.current = false;
           return;
         }
-        const { tool: activeTool, draft: current } = latestRef.current;
+        const {
+          tool: activeTool,
+          draft: current,
+          annotations: items,
+        } = latestRef.current;
         const point = eventLngLat(event);
-        const hitId = current ? null : hitAnnotationId(map, event.point);
+        const hitId = current ? null : hitAnnotationId(map, event.point, items);
 
         if (hitId) {
           latestRef.current.onSelect?.(hitId);
@@ -374,7 +480,7 @@ export function Annotate({
         });
       };
 
-      const onDblClick = (event: MapMouseEvent) => {
+      const onDblClick = (event: MapPointerEvent) => {
         const { tool: activeTool, draft: current } = latestRef.current;
         if (!current || !isClickVertexTool(activeTool)) return;
         event.preventDefault();
@@ -397,14 +503,18 @@ export function Annotate({
       map.on("dblclick", onDblClick);
 
       detach = () => {
-        map.off("mousedown", onMouseDown);
-        map.off("mousemove", onMouseMove);
-        map.off("mouseup", onMouseUp);
-        map.off("click", onClick);
-        map.off("dblclick", onDblClick);
-        map.dragPan.enable();
-        const canvas = map.getCanvas();
-        if (canvas) canvas.style.cursor = "";
+        try {
+          map.off("mousedown", onMouseDown);
+          map.off("mousemove", onMouseMove);
+          map.off("mouseup", onMouseUp);
+          map.off("click", onClick);
+          map.off("dblclick", onDblClick);
+          map.dragPan.enable();
+          const canvas = map.getCanvas();
+          if (canvas) canvas.style.cursor = "";
+        } catch {
+          // Host map can be destroyed before this effect cleans up.
+        }
       };
     };
 
@@ -415,7 +525,7 @@ export function Annotate({
       if (retry != null) window.clearTimeout(retry);
       detach?.();
     };
-  }, [commitDraft, interactive, resolveMap, tool]);
+  }, [commitDraft, interactive, resolveMap, setHoverId, tool]);
 
   React.useEffect(() => {
     if (!interactive) return;
@@ -461,15 +571,23 @@ export function Annotate({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [commitDraft, finishDrawing, interactive]);
 
+  const terrain = React.useMemo(
+    () => resolveTerrainSource(engine, enableTerrain, terrainSource),
+    [engine, enableTerrain, terrainSource],
+  );
+
   React.useEffect(() => {
-    if (!enableTerrain) return;
+    if (!terrain) return;
     const map = resolveMap()?.getMap();
     if (!map) return;
 
     const applyTerrain = () => {
       if (!map.getSource(SOURCE_IDS.terrain)) return;
       if (map.getTerrain()) return;
-      map.setTerrain({ source: SOURCE_IDS.terrain, exaggeration: 1 });
+      map.setTerrain({
+        source: SOURCE_IDS.terrain,
+        exaggeration: terrain.exaggeration ?? 1,
+      });
     };
 
     if (map.isStyleLoaded()) applyTerrain();
@@ -477,7 +595,7 @@ export function Annotate({
     return () => {
       map.off("style.load", applyTerrain);
     };
-  }, [enableTerrain, resolveMap]);
+  }, [resolveMap, terrain]);
 
   function handleLabelChange(
     id: string,
@@ -489,16 +607,17 @@ export function Annotate({
 
   return (
     <>
-      {enableTerrain ? (
+      {terrain ? (
         <Source
           id={SOURCE_IDS.terrain}
           type="raster-dem"
-          url="mapbox://mapbox.mapbox-terrain-dem-v1"
-          tileSize={514}
-          maxzoom={14}
+          url={terrain.url}
+          tiles={terrain.tiles}
+          tileSize={terrain.tileSize}
+          maxzoom={terrain.maxzoom}
         />
       ) : null}
-      <AnnotateLayers
+      <PaintLayers
         annotations={annotations}
         draft={draft}
         selectedId={selectedId}
@@ -511,8 +630,7 @@ export function Annotate({
         onLabelChange={handleLabelChange}
         onUpdate={onUpdate}
         onHandleDragEnd={(id) => {
-          ignoreHoverIdRef.current = id;
-          setHoveredId(null);
+          setHoverId(id);
         }}
       />
     </>

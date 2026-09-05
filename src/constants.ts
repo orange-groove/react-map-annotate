@@ -34,6 +34,8 @@ export const SELECTABLE_LAYER_IDS = [
 export const DEFAULT_COLOR = "#2563eb";
 export const DEFAULT_STROKE_WIDTH = 3;
 export const SAMPLE_INTERVAL_METERS = 10;
+export const HANDLE_HIT_PX = 20;
+export const MAPBOX_TERRAIN_DEM = "mapbox://mapbox.mapbox-terrain-dem-v1";
 export const EARTH_RADIUS_M = 6_371_000;
 
 export const DRAW_TOOLS: AnnotateTool[] = [
