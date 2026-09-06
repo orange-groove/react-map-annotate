@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { MapGlProvider } from "../gl/context";
-import type { GlKit } from "../gl/types";
+import { MapGlProvider } from "../engines/kit/context";
+import type { GlKit } from "../engines/kit/types";
 
 export const testMapGl: GlKit = {
   engine: "mapbox",

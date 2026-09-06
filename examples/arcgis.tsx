@@ -3,10 +3,12 @@ import Map from "@arcgis/core/Map.js";
 import MapView from "@arcgis/core/views/MapView.js";
 import WebTileLayer from "@arcgis/core/layers/WebTileLayer.js";
 import {
-  Annotate,
   AnnotateList,
   AnnotateProvider,
   AnnotateToolbar,
+} from "@orange-groove/react-map-annotate/core";
+import {
+  Annotate,
   ArcgisViewProvider,
 } from "@orange-groove/react-map-annotate/arcgis";
 import "@arcgis/core/assets/esri/themes/light/main.css";

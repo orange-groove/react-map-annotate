@@ -1,4 +1,4 @@
-import { useAnnotate } from "@orange-groove/react-map-annotate";
+import { useAnnotate } from "@orange-groove/react-map-annotate/core";
 
 export function HeadlessChrome() {
   const { tool, setTool, finish, canFinish, selectedId, onDelete, setLabel } =

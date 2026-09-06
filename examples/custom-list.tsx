@@ -1,4 +1,4 @@
-import { useAnnotateItems } from "@orange-groove/react-map-annotate";
+import { useAnnotateItems } from "@orange-groove/react-map-annotate/core";
 
 export function CustomList() {
   const items = useAnnotateItems();

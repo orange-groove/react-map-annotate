@@ -3,6 +3,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: {
     index: "src/index.ts",
+    core: "src/core.ts",
     mapbox: "src/mapbox.ts",
     maplibre: "src/maplibre.ts",
     google: "src/google.ts",

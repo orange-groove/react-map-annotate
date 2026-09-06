@@ -1,12 +1,12 @@
 import { useState } from "react";
 import Map from "react-map-gl/mapbox";
 import {
-  Annotate,
   AnnotateList,
   AnnotateProvider,
   AnnotateToolbar,
   type Annotation,
-} from "@orange-groove/react-map-annotate/mapbox";
+} from "@orange-groove/react-map-annotate/core";
+import { Annotate } from "@orange-groove/react-map-annotate/mapbox";
 import "@orange-groove/react-map-annotate/styles.css";
 
 export function ControlledState({ token }: { token: string }) {

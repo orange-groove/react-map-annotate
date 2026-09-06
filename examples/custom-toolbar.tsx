@@ -1,7 +1,7 @@
 import {
   AnnotateToolIcon,
   useAnnotateTools,
-} from "@orange-groove/react-map-annotate";
+} from "@orange-groove/react-map-annotate/core";
 
 export function CustomToolbar() {
   const { items, finish, canFinish, selectedId, deleteSelected } =

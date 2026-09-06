@@ -14,11 +14,11 @@ npm install @orange-groove/react-map-annotate
 ```tsx
 import Map from "react-map-gl/mapbox";
 import {
-  Annotate,
   AnnotateList,
   AnnotateProvider,
   AnnotateToolbar,
-} from "@orange-groove/react-map-annotate";
+} from "@orange-groove/react-map-annotate/core";
+import { Annotate } from "@orange-groove/react-map-annotate/mapbox";
 import "@orange-groove/react-map-annotate/styles.css";
 
 <AnnotateProvider annotations={annotations} onChange={setAnnotations}>
@@ -78,7 +78,7 @@ Freehand, lines, arrows, bidirectional arrows, circles, rectangles, polygons, ge
 You never have to use the bundled toolbar.
 
 ```tsx
-import { useAnnotateTools } from "@orange-groove/react-map-annotate";
+import { useAnnotateTools } from "@orange-groove/react-map-annotate/core";
 
 function TextToolbar() {
   const { items, finish, canFinish, selectedId, deleteSelected } =
@@ -181,9 +181,9 @@ export function MapWithDraw({ token }: { token: string }) {
 
 ## One session, five maps
 
-Import `Annotate` from the entry that matches the `Map` you render. The annotation model does not change.
+Import the session from `/core`. Import `Annotate` from the entry that matches the `Map` you render. The annotation model does not change. Engine entries still re-export the session so existing `/mapbox` (and root) imports keep working.
 
-| Engine   | Import                                           | Example                                            |
+| Engine   | `Annotate` import                                | Example                                            |
 | -------- | ------------------------------------------------ | -------------------------------------------------- |
 | Mapbox   | `@orange-groove/react-map-annotate` or `/mapbox` | [`examples/mapbox.tsx`](./examples/mapbox.tsx)     |
 | MapLibre | `/maplibre`                                      | [`examples/maplibre.tsx`](./examples/maplibre.tsx) |
@@ -242,6 +242,7 @@ Measure paths are densified along the geodesic every 10 meters. With terrain ena
 
 | Export               | Role                                                         |
 | -------------------- | ------------------------------------------------------------ |
+| `/core`              | Session, hooks, types, utils, toolbar, list — no `Annotate`. |
 | `AnnotateProvider`   | Session. Optional `annotations` / `onChange`.                |
 | `Annotate`           | Map child. Drawing, hover handles, layers.                   |
 | `AnnotateToolbar`    | Stock icon toolbar — optional.                               |

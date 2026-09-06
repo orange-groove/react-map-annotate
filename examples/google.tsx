@@ -1,10 +1,10 @@
 import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import {
-  Annotate,
   AnnotateList,
   AnnotateProvider,
   AnnotateToolbar,
-} from "@orange-groove/react-map-annotate/google";
+} from "@orange-groove/react-map-annotate/core";
+import { Annotate } from "@orange-groove/react-map-annotate/google";
 import "@orange-groove/react-map-annotate/styles.css";
 
 export function GoogleExample({ apiKey }: { apiKey: string }) {

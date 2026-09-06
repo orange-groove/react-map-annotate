@@ -1,10 +1,10 @@
 "use client";
 
-import { GoogleAnnotateLayers } from "./google/annotate-layers";
-import { createMapGlComponents } from "./gl/create-map-gl";
-import { GoogleMarker } from "./google/marker";
-import { useGoogleMapRef } from "./google/use-google-map-ref";
-import type { GlKit } from "./gl/types";
+import { GoogleAnnotateLayers } from "./engines/google/annotate-layers";
+import { createMapGlComponents } from "./engines/kit/create-map-gl";
+import { GoogleMarker } from "./engines/google/marker";
+import { useGoogleMapRef } from "./engines/google/use-google-map-ref";
+import type { GlKit } from "./engines/kit/types";
 
 const kit = {
   engine: "google",

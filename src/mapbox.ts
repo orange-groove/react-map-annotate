@@ -1,8 +1,8 @@
 "use client";
 
 import { Layer, Marker, Source, useMap } from "react-map-gl/mapbox";
-import { createMapGlComponents } from "./gl/create-map-gl";
-import type { GlKit } from "./gl/types";
+import { createMapGlComponents } from "./engines/kit/create-map-gl";
+import type { GlKit } from "./engines/kit/types";
 
 const kit = {
   engine: "mapbox",

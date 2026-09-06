@@ -1,10 +1,10 @@
 "use client";
 
-import { LeafletAnnotateLayers } from "./leaflet/annotate-layers";
-import { createMapGlComponents } from "./gl/create-map-gl";
-import { LeafletMarker } from "./leaflet/marker";
-import { useLeafletMapRef } from "./leaflet/use-leaflet-map-ref";
-import type { GlKit } from "./gl/types";
+import { LeafletAnnotateLayers } from "./engines/leaflet/annotate-layers";
+import { createMapGlComponents } from "./engines/kit/create-map-gl";
+import { LeafletMarker } from "./engines/leaflet/marker";
+import { useLeafletMapRef } from "./engines/leaflet/use-leaflet-map-ref";
+import type { GlKit } from "./engines/kit/types";
 
 const kit = {
   engine: "leaflet",

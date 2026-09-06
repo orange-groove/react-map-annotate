@@ -1,23 +1,23 @@
 "use client";
 
-export { AnnotateToolbar } from "./components/annotate-toolbar";
-export { AnnotateList } from "./components/annotate-list";
-export { DefaultArrowHead } from "./components/arrow-head";
-export { AnnotateToolIcon } from "./components/tool-icon";
-export { AnnotateProvider } from "./context/annotate-context";
-export { useAnnotate, useOptionalAnnotate } from "./hooks/use-annotate";
+export { AnnotateToolbar } from "./ui/annotate-toolbar";
+export { AnnotateList } from "./ui/annotate-list";
+export { DefaultArrowHead } from "./paint/arrow-head";
+export { AnnotateToolIcon } from "./ui/tool-icon";
+export { AnnotateProvider } from "./session/annotate-context";
+export { useAnnotate, useOptionalAnnotate } from "./session/use-annotate";
 export {
   useAnnotateItems,
   useAnnotateTools,
-} from "./hooks/use-annotate-controls";
+} from "./session/use-annotate-controls";
 export type {
   AnnotateListItem,
   AnnotateToolItem,
-} from "./hooks/use-annotate-controls";
+} from "./session/use-annotate-controls";
 export type {
   AnnotateProviderProps,
   AnnotateSession,
-} from "./hooks/use-annotate";
+} from "./session/use-annotate";
 
 export {
   LAYER_IDS,
@@ -37,7 +37,7 @@ export {
   isDragTool,
   isClickVertexTool,
   isAnnotateLayerId,
-} from "./constants";
+} from "./core/constants";
 
 export {
   haversineDistance,
@@ -88,16 +88,16 @@ export {
   applyEditHandle,
   editHandleCursor,
   hitTestAnnotations,
-} from "./utils";
+} from "./core/utils";
 export type {
   TerrainMap,
   ArrowMarker,
   AnnotationFeatures,
   PathEndpoint,
   EditHandleHit,
-} from "./utils";
+} from "./core/utils";
 
-export type { MapEngine } from "./gl/types";
+export type { MapEngine, MapLngLat, MapPoint } from "./core/types";
 
 export type {
   LngLat,
@@ -117,4 +117,4 @@ export type {
   AnnotateToolbarProps,
   AnnotateListProps,
   TerrainSourceOptions,
-} from "./types";
+} from "./core/types";
