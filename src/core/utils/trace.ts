@@ -287,6 +287,14 @@ export function traceRenderedRoads(
   return pickTraceHit(map, screen, features, tolerance * 4);
 }
 
+function isTracePromise(
+  value: TraceHit | null | undefined | Promise<TraceHit | null | undefined>,
+): value is Promise<TraceHit | null | undefined> {
+  return (
+    Boolean(value) && typeof (value as Promise<unknown>).then === "function"
+  );
+}
+
 export function resolveTrace(
   option: TraceOption | undefined,
   lngLat: LngLat,
@@ -296,8 +304,8 @@ export function resolveTrace(
     if (option === false) return null;
     if (typeof option === "function") {
       const hit = option(lngLat, context);
-      if (hit && typeof (hit as Promise<unknown>).then === "function") {
-        return Promise.resolve(hit).then(
+      if (isTracePromise(hit)) {
+        return hit.then(
           (value) => value ?? null,
           () => null,
         );
