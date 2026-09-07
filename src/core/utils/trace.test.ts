@@ -304,6 +304,17 @@ describe("resolveTrace", () => {
     ).toBe(hit);
     expect(trace).toHaveBeenCalled();
   });
+
+  it("awaits an async host callback", async () => {
+    const hit = { id: "host", coordinates: [origin, east10] };
+    await expect(
+      resolveTrace(async () => hit, origin, {
+        map: mapOf(),
+        point: { x: 1, y: 2 },
+        phase: "hover",
+      }),
+    ).resolves.toBe(hit);
+  });
 });
 
 describe("stitchTrace", () => {

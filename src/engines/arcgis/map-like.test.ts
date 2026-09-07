@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { getArcgisMapLike } from "./map-like";
 import {
+  lngLatFromMapPoint,
   lngLatToWebMercator,
+  webMercatorToLngLat,
   type ArcgisView,
   type ArcgisViewEvent,
 } from "./view";
@@ -81,6 +83,20 @@ function fakeArcgisView() {
 
   return view;
 }
+
+describe("lngLatFromMapPoint", () => {
+  it("converts web mercator x/y when geographic fields are missing", () => {
+    const mercator = lngLatToWebMercator(-73.9857, 40.7484);
+    expect(mercator).toBeTruthy();
+    const point = lngLatFromMapPoint(mercator);
+    expect(point?.lng).toBeCloseTo(-73.9857, 5);
+    expect(point?.lat).toBeCloseTo(40.7484, 5);
+    expect(webMercatorToLngLat(mercator!.x, mercator!.y)?.lng).toBeCloseTo(
+      -73.9857,
+      5,
+    );
+  });
+});
 
 describe("getArcgisMapLike", () => {
   it("projects GeoJSON lng/lat through MapView screen points", () => {

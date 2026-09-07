@@ -3,6 +3,14 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.5
+
+- Host `trace` callbacks may be async, so Google, Leaflet, and ArcGIS can
+  fetch geometry and still highlight on the same hover.
+- ArcGIS pointer positions are converted from Web Mercator to lng/lat.
+- README: how to enable Trace on those engines, and why Mapbox and MapLibre
+  do not need a callback.
+
 ## 0.3.4
 
 - Google Trace hover is immediate and works on the first visit. Overlay

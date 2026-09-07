@@ -291,11 +291,18 @@ export function resolveTrace(
   option: TraceOption | undefined,
   lngLat: LngLat,
   context: TraceContext,
-): TraceHit | null {
+): TraceHit | null | Promise<TraceHit | null> {
   try {
     if (option === false) return null;
     if (typeof option === "function") {
-      return option(lngLat, context) ?? null;
+      const hit = option(lngLat, context);
+      if (hit && typeof (hit as Promise<unknown>).then === "function") {
+        return Promise.resolve(hit).then(
+          (value) => value ?? null,
+          () => null,
+        );
+      }
+      return hit ?? null;
     }
     const point = context.point;
     if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {

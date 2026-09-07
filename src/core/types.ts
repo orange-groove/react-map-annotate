@@ -21,7 +21,11 @@ export interface TraceContext {
 export type TraceFn = (
   lngLat: LngLat,
   context: TraceContext,
-) => TraceHit | null | undefined;
+) =>
+  | TraceHit
+  | null
+  | undefined
+  | Promise<TraceHit | null | undefined>;
 
 export interface TraceOptions {
   layers?: string[];

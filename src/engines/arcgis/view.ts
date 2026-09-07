@@ -160,21 +160,48 @@ export function screenPointFromGeometry(
   return null;
 }
 
-export function lngLatFromMapPoint(
-  point: ArcgisMapPoint | null | undefined,
+export function webMercatorToLngLat(
+  x: number,
+  y: number,
 ): { lng: number; lat: number } | null {
-  if (!point) return null;
-  const lng = point.longitude ?? point.x;
-  const lat = point.latitude ?? point.y;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const lng = (x / WEB_MERCATOR) * (180 / Math.PI);
+  const lat =
+    (2 * Math.atan(Math.exp(y / WEB_MERCATOR)) - Math.PI / 2) * (180 / Math.PI);
   if (
-    lng == null ||
-    lat == null ||
     !Number.isFinite(lng) ||
-    !Number.isFinite(lat)
+    !Number.isFinite(lat) ||
+    Math.abs(lng) > 180 ||
+    Math.abs(lat) > 90
   ) {
     return null;
   }
   return { lng, lat };
+}
+
+export function lngLatFromMapPoint(
+  point: ArcgisMapPoint | null | undefined,
+): { lng: number; lat: number } | null {
+  if (!point) return null;
+  if (
+    point.longitude != null &&
+    point.latitude != null &&
+    Number.isFinite(point.longitude) &&
+    Number.isFinite(point.latitude) &&
+    Math.abs(point.longitude) <= 180 &&
+    Math.abs(point.latitude) <= 90
+  ) {
+    return { lng: point.longitude, lat: point.latitude };
+  }
+  const x = point.x;
+  const y = point.y;
+  if (x == null || y == null || !Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+  if (Math.abs(x) > 180 || Math.abs(y) > 90) {
+    return webMercatorToLngLat(x, y);
+  }
+  return { lng: x, lat: y };
 }
 
 export function screenPointFromEvent(

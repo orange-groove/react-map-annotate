@@ -11,6 +11,7 @@ import type {
   Annotation,
   DraftAnnotation,
   LngLat,
+  TraceHit,
   TraceOption,
 } from "../core/types";
 import {
@@ -217,13 +218,19 @@ export function useMapDrawing({
         latestRef.current.onDraftChange?.(next);
       };
 
-      const hoverTrace = (point: LngLat, screen: { x: number; y: number }) => {
+      let hoverGen = 0;
+      const settleTrace = (
+        result: ReturnType<typeof resolveTrace>,
+        onHit: (hit: TraceHit | null) => void,
+      ) => {
+        if (result && typeof (result as Promise<unknown>).then === "function") {
+          void Promise.resolve(result).then(onHit, () => onHit(null));
+          return;
+        }
+        onHit(result as TraceHit | null);
+      };
+      const applyTraceHit = (hit: TraceHit | null) => {
         const current = latestRef.current.draft;
-        const hit = resolveTrace(latestRef.current.trace, point, {
-          map,
-          point: screen,
-          phase: "hover",
-        });
         setTracePreview(hit?.coordinates ?? null);
         if (hit) {
           if (
@@ -237,6 +244,20 @@ export function useMapDrawing({
           pushDraft(null);
         }
         setMapCursor(map, "crosshair");
+      };
+      const hoverTrace = (point: LngLat, screen: { x: number; y: number }) => {
+        const gen = ++hoverGen;
+        settleTrace(
+          resolveTrace(latestRef.current.trace, point, {
+            map,
+            point: screen,
+            phase: "hover",
+          }),
+          (hit) => {
+            if (gen !== hoverGen) return;
+            applyTraceHit(hit);
+          },
+        );
       };
 
       const onMouseDown = (event: MapPointerEvent) => {
@@ -461,15 +482,19 @@ export function useMapDrawing({
             commitDraft(draft);
             return;
           }
-          const hit = resolveTrace(latestRef.current.trace, point, {
-            map,
-            point: event.point,
-            phase: "draw",
-          });
-          if (hit) {
-            setTracePreview(null);
-            commitDraft({ kind: "trace", coordinates: hit.coordinates });
-          }
+          settleTrace(
+            resolveTrace(latestRef.current.trace, point, {
+              map,
+              point: event.point,
+              phase: "draw",
+            }),
+            (hit) => {
+              if (hit) {
+                setTracePreview(null);
+                commitDraft({ kind: "trace", coordinates: hit.coordinates });
+              }
+            },
+          );
           return;
         }
         const hitId = current ? null : hitAnnotationId(map, event.point, items);
