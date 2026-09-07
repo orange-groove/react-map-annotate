@@ -3,6 +3,13 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.3
+
+- Trace tool: hover a rendered road or building outline, click to keep it.
+  Mapbox and MapLibre query the map; other engines need a `trace` callback.
+  Finished traces move by their bounds box, with no vertex handles.
+- Optional `showLabels` / `showArea` on the provider and `Annotate`.
+
 ## 0.3.2
 
 - Copy, paste, and duplicate: context menu, ⌘/Ctrl+C, V, and D.
