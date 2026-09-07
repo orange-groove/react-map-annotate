@@ -35,7 +35,7 @@ function createGoogleMapLike(map: GoogleMap): MapLike {
 
   overlay.onAdd = function onAdd() {
     host = document.createElement("div");
-    host.className = "rmga-google-overlay";
+    host.className = "rma-google-overlay";
     this.getPanes()?.overlayMouseTarget.appendChild(host);
   };
   overlay.draw = function onDraw() {

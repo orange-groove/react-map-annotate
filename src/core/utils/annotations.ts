@@ -1,4 +1,9 @@
-import { DEFAULT_LABELS, SAMPLE_INTERVAL_METERS } from "../constants";
+import {
+  DEFAULT_FONT_SIZE,
+  DEFAULT_LABELS,
+  SAMPLE_INTERVAL_METERS,
+  clampStrokeWidth,
+} from "../constants";
 import type {
   Annotation,
   AnnotationKind,
@@ -9,6 +14,7 @@ import type {
   LngLat,
   MarkerAnnotation,
   PathAnnotation,
+  TextAnnotation,
 } from "../types";
 import {
   circleRing,
@@ -38,6 +44,14 @@ export function isPathAnnotation(
   );
 }
 
+export function isArrowAnnotation(
+  annotation: Annotation,
+): annotation is PathAnnotation {
+  return (
+    annotation.kind === "arrow" || annotation.kind === "bidirectional-arrow"
+  );
+}
+
 export function isAreaAnnotation(
   annotation: Annotation,
 ): annotation is AreaAnnotation {
@@ -52,6 +66,12 @@ export function isMarkerAnnotation(
   annotation: Annotation,
 ): annotation is MarkerAnnotation {
   return annotation.kind === "marker";
+}
+
+export function isTextAnnotation(
+  annotation: Annotation,
+): annotation is TextAnnotation {
+  return annotation.kind === "text";
 }
 
 export function previewCoordinates(draft: DraftAnnotation | null): LngLat[] {
@@ -76,7 +96,9 @@ export function committedDraftCoordinates(draft: DraftAnnotation): LngLat[] {
 }
 
 export function labelAnchor(annotation: Annotation): LngLat | null {
-  if (annotation.kind === "marker") return annotation.coordinate;
+  if (annotation.kind === "marker" || annotation.kind === "text") {
+    return annotation.coordinate;
+  }
   if (annotation.kind === "circle" && annotation.center) {
     return annotation.center;
   }
@@ -111,7 +133,11 @@ export function setAnnotationStyle(
   annotation: Annotation,
   style: AnnotationStyle,
 ): Annotation {
-  return { ...annotation, style: { ...annotation.style, ...style } };
+  const next = { ...annotation.style, ...style };
+  if (style.strokeWidth != null) {
+    next.strokeWidth = clampStrokeWidth(style.strokeWidth);
+  }
+  return { ...annotation, style: next };
 }
 
 export function setAnnotationColor(
@@ -181,15 +207,30 @@ export function annotationFromDraft(
     map?: TerrainMap | null;
     sampleIntervalMeters?: number;
     color?: string;
+    fontFamily?: string;
   } = {},
 ): Annotation | null {
   const coordinates = previewCoordinates(draft);
   const interval = options.sampleIntervalMeters ?? SAMPLE_INTERVAL_METERS;
   const style = options.color ? { color: options.color } : undefined;
 
-  if (draft.kind === "marker") {
+  if (draft.kind === "marker" || draft.kind === "text") {
     const coordinate = coordinates[0];
     if (!coordinate) return null;
+    if (draft.kind === "text") {
+      const text: TextAnnotation = {
+        id: options.id ?? createAnnotationId(),
+        kind: "text",
+        label: DEFAULT_LABELS.text,
+        coordinate,
+        style: {
+          ...(style ?? {}),
+          fontSize: DEFAULT_FONT_SIZE,
+          ...(options.fontFamily ? { fontFamily: options.fontFamily } : {}),
+        },
+      };
+      return text;
+    }
     const marker: MarkerAnnotation = {
       id: options.id ?? createAnnotationId(),
       kind: "marker",
@@ -231,12 +272,13 @@ export function annotationFromDraft(
   }
 
   if (draft.kind === "polygon") {
-    if (draft.coordinates.length < 3) return null;
+    const ring = committedDraftCoordinates(draft);
+    if (ring.length < 3) return null;
     const area: AreaAnnotation = {
       id: options.id ?? createAnnotationId(),
       kind: "polygon",
       label: DEFAULT_LABELS.polygon,
-      coordinates: closeRing(draft.coordinates),
+      coordinates: closeRing(ring),
       style,
     };
     return area;
@@ -284,19 +326,22 @@ function pathLengthTooShort(coordinates: LngLat[]): boolean {
 }
 
 export function minVerticesForKind(kind: AnnotationKind): number {
-  if (kind === "marker") return 1;
+  if (kind === "marker" || kind === "text") return 1;
   if (kind === "polygon") return 3;
   return 2;
 }
 
 export function canFinishDraft(draft: DraftAnnotation | null): boolean {
   if (!draft) return false;
-  if (draft.kind === "marker") return draft.coordinates.length >= 1;
-  if (draft.kind === "polygon") return draft.coordinates.length >= 3;
+  const coords = committedDraftCoordinates(draft);
+  if (draft.kind === "marker" || draft.kind === "text") {
+    return coords.length >= 1;
+  }
+  if (draft.kind === "polygon") return coords.length >= 3;
   if (draft.kind === "draw") {
     return previewCoordinates(draft).length >= 2;
   }
-  return draft.coordinates.length >= 2;
+  return coords.length >= 2;
 }
 
 export function canPressFinish(

@@ -4,8 +4,17 @@ import {
 } from "@orange-groove/react-map-annotate/core";
 
 export function CustomToolbar() {
-  const { items, finish, canFinish, selectedId, deleteSelected } =
-    useAnnotateTools(["line", "polygon", "measure", "marker"]);
+  const {
+    items,
+    finish,
+    canFinish,
+    selectedId,
+    deleteSelected,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useAnnotateTools(["line", "polygon", "measure", "marker"]);
 
   return (
     <div role="toolbar" aria-label="Annotation tools">
@@ -22,6 +31,12 @@ export function CustomToolbar() {
       ))}
       <button type="button" disabled={!canFinish} onClick={finish}>
         Finish
+      </button>
+      <button type="button" disabled={!canUndo} onClick={undo}>
+        Undo
+      </button>
+      <button type="button" disabled={!canRedo} onClick={redo}>
+        Redo
       </button>
       <button type="button" disabled={!selectedId} onClick={deleteSelected}>
         Delete

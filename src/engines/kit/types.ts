@@ -17,6 +17,7 @@ export type GlAnnotateLayersProps = Pick<
   | "defaultStrokeWidth"
   | "labelsEditable"
   | "renderArrowHead"
+  | "renderLabel"
   | "onSelect"
   | "onLabelChange"
   | "onUpdate"

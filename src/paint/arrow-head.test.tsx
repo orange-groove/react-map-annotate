@@ -16,6 +16,7 @@ describe("DefaultArrowHead", () => {
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
     expect(svg?.getAttribute("style")).toContain("rotate(137deg)");
+    expect(svg?.getAttribute("width")).toBe("26");
     expect(container.querySelector("path")?.getAttribute("fill")).toBe(
       "#2563eb",
     );

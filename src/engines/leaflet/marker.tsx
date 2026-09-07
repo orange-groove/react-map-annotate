@@ -43,7 +43,7 @@ export function LeafletMarker({
 
   useEffect(() => {
     const icon = L.divIcon({
-      className: "rmga-leaflet-marker",
+      className: "rma-leaflet-marker",
       html: "",
       iconSize: [0, 0],
       iconAnchor: [0, 0],
@@ -103,7 +103,7 @@ export function LeafletMarker({
   return createPortal(
     <div
       ref={overlayRef}
-      className="rmga-overlay-marker"
+      className="rma-overlay-marker"
       style={{
         display: "block",
         width: "max-content",

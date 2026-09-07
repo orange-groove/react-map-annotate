@@ -34,6 +34,7 @@ export function GoogleAnnotateLayers({
   defaultStrokeWidth,
   labelsEditable = true,
   renderArrowHead,
+  renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
@@ -47,6 +48,7 @@ export function GoogleAnnotateLayers({
   | "defaultStrokeWidth"
   | "labelsEditable"
   | "renderArrowHead"
+  | "renderLabel"
   | "onSelect"
   | "onLabelChange"
   | "onUpdate"
@@ -138,6 +140,7 @@ export function GoogleAnnotateLayers({
         color={color}
         labelsEditable={labelsEditable}
         renderArrowHead={renderArrowHead}
+        renderLabel={renderLabel}
         arrows={arrows}
         markers={markers}
         onSelect={onSelect}

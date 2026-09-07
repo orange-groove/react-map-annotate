@@ -61,7 +61,7 @@ export function GoogleMarker({
   return (
     <AdvancedMarker
       ref={clearMarkerChrome}
-      className="rmga-overlay-marker"
+      className="rma-overlay-marker"
       style={{ background: "transparent", border: "none", boxShadow: "none" }}
       position={{ lat: latitude, lng: longitude }}
       {...googleMarkerAnchor(anchor, pin)}

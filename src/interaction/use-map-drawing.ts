@@ -3,6 +3,7 @@ import {
   isClickVertexTool,
   isDragTool,
   isDrawingTool,
+  isPointTool,
 } from "../core/constants";
 import type {
   AnnotateTool,
@@ -41,6 +42,7 @@ export interface MapDrawingLatest {
   tool: AnnotateTool;
   selectedId: string | null;
   defaultColor: string;
+  defaultFontFamily?: string;
   sampleIntervalMeters: number;
   onAdd?: (annotation: Annotation) => void;
   onUpdate?: (annotation: Annotation) => void;
@@ -48,6 +50,11 @@ export interface MapDrawingLatest {
   onDraftChange?: (draft: DraftAnnotation | null) => void;
   onToolChange?: (tool: AnnotateTool) => void;
   onSelect?: (id: string | null) => void;
+  setSelectedVertexIndex?: (index: number | null) => void;
+  undo?: () => void;
+  redo?: () => void;
+  endEdit?: () => void;
+  removeSelected?: () => void;
 }
 
 export function useMapDrawing({
@@ -83,14 +90,17 @@ export function useMapDrawing({
 
   const commitDraft = React.useCallback(
     (nextDraft: DraftAnnotation | null = latestRef.current.draft) => {
+      dragRef.current = false;
       const map = resolveMap()?.getMap();
       const annotation = nextDraft
         ? annotationFromDraft(nextDraft, {
             map,
             sampleIntervalMeters: latestRef.current.sampleIntervalMeters,
             color: latestRef.current.defaultColor,
+            fontFamily: latestRef.current.defaultFontFamily,
           })
         : null;
+      latestRef.current.draft = null;
       latestRef.current.onDraftChange?.(null);
       if (annotation) {
         latestRef.current.onAdd?.(annotation);
@@ -102,13 +112,31 @@ export function useMapDrawing({
 
   const finishDrawing = React.useCallback(() => {
     const current = latestRef.current.draft;
-    if (canFinishDraft(current)) {
-      commitDraft(current);
+    dragRef.current = false;
+    if (current) {
+      const clicked = { ...current, cursor: undefined };
+      commitDraft(
+        canFinishDraft(clicked)
+          ? clicked
+          : {
+              ...current,
+              coordinates: committedDraftCoordinates(current),
+              cursor: undefined,
+            },
+      );
     } else {
+      latestRef.current.draft = null;
       latestRef.current.onDraftChange?.(null);
     }
     latestRef.current.onToolChange?.("select");
   }, [commitDraft, latestRef]);
+
+  const cancelDrawing = React.useCallback(() => {
+    dragRef.current = false;
+    editRef.current = null;
+    latestRef.current.draft = null;
+    latestRef.current.onDraftChange?.(null);
+  }, [latestRef]);
 
   React.useEffect(() => {
     if (!interactive) return;
@@ -169,6 +197,13 @@ export function useMapDrawing({
           };
           suppressClickRef.current = false;
           latestRef.current.onSelect?.(handleTarget.annotation.id);
+          latestRef.current.setSelectedVertexIndex?.(
+            handleTarget.handle.kind === "insert"
+              ? handleTarget.handle.index + 1
+              : handleTarget.handle.kind === "vertex"
+                ? handleTarget.handle.index
+                : null,
+          );
           setHoverId(handleTarget.annotation.id);
           map.dragPan.disable();
           map.getCanvas().style.cursor = editHandleCursor(handleTarget.handle);
@@ -282,6 +317,7 @@ export function useMapDrawing({
         if (editRef.current) {
           const editedId = editRef.current.id;
           editRef.current = null;
+          latestRef.current.endEdit?.();
           setHoverId(editedId);
           if (!isDrawingTool(latestRef.current.tool)) {
             map.dragPan.enable();
@@ -336,8 +372,11 @@ export function useMapDrawing({
           return;
         }
 
-        if (activeTool === "marker") {
-          commitDraft({ kind: "marker", coordinates: [point] });
+        if (isPointTool(activeTool)) {
+          commitDraft({ kind: activeTool, coordinates: [point] });
+          if (activeTool === "text") {
+            latestRef.current.onToolChange?.("select");
+          }
           return;
         }
 
@@ -380,17 +419,34 @@ export function useMapDrawing({
 
       const onDblClick = (event: MapPointerEvent) => {
         const { tool: activeTool, draft: current } = latestRef.current;
-        if (!current || !isClickVertexTool(activeTool)) return;
-        event.preventDefault();
-        const coordinates = current.coordinates.slice();
-        if (
-          coordinates.length > minVerticesForKind(current.kind) &&
-          lastTwoEqual(coordinates)
-        ) {
-          coordinates.pop();
+        if (current && isClickVertexTool(activeTool)) {
+          event.preventDefault();
+          const coordinates = current.coordinates.slice();
+          if (
+            coordinates.length > minVerticesForKind(current.kind) &&
+            lastTwoEqual(coordinates)
+          ) {
+            coordinates.pop();
+          }
+          if (canFinishDraft({ ...current, coordinates })) {
+            commitDraft({ ...current, coordinates, cursor: undefined });
+          }
+          return;
         }
-        if (canFinishDraft({ ...current, coordinates })) {
-          commitDraft({ ...current, coordinates, cursor: undefined });
+        const items = latestRef.current.annotations;
+        const hitId = hitAnnotationId(map, event.point, items);
+        const handleTarget = resolveHandleTarget(
+          map,
+          event.point,
+          items,
+          hoverIdRef.current,
+          hitId,
+        );
+        if (handleTarget?.handle.kind === "vertex") {
+          event.preventDefault();
+          latestRef.current.onSelect?.(handleTarget.annotation.id);
+          latestRef.current.setSelectedVertexIndex?.(handleTarget.handle.index);
+          latestRef.current.removeSelected?.();
         }
       };
 
@@ -431,6 +487,7 @@ export function useMapDrawing({
     resolveMap,
     commitDraft,
     finishDrawing,
+    cancelDrawing,
     maps: maps as { current?: MapRef | null },
   };
 }

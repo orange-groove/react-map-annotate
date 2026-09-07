@@ -57,7 +57,7 @@ export function ArcgisMarker({
 
   return (
     <div
-      className="rmga-overlay-marker"
+      className="rma-overlay-marker"
       style={{
         position: "absolute",
         left: point.x,

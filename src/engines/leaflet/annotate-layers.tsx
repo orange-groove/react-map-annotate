@@ -16,6 +16,7 @@ export function LeafletAnnotateLayers({
   defaultStrokeWidth,
   labelsEditable = true,
   renderArrowHead,
+  renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
@@ -29,6 +30,7 @@ export function LeafletAnnotateLayers({
   | "defaultStrokeWidth"
   | "labelsEditable"
   | "renderArrowHead"
+  | "renderLabel"
   | "onSelect"
   | "onLabelChange"
   | "onUpdate"
@@ -125,6 +127,7 @@ export function LeafletAnnotateLayers({
         color={color}
         labelsEditable={labelsEditable}
         renderArrowHead={renderArrowHead}
+        renderLabel={renderLabel}
         arrows={arrows}
         markers={markers}
         onSelect={onSelect}

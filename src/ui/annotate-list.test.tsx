@@ -79,4 +79,110 @@ describe("AnnotateList", () => {
     render(<AnnotateList annotations={[]} />);
     expect(screen.getByText("No annotations")).toBeTruthy();
   });
+
+  it("sets a font family on text annotations", () => {
+    const text: Annotation = {
+      id: "t1",
+      kind: "text",
+      label: "Hello",
+      coordinate: [-73.9, 40.7],
+      style: { color: "#ec4899", fontSize: 28 },
+    };
+    const onStyleChange = vi.fn();
+    render(<AnnotateList annotations={[text]} onStyleChange={onStyleChange} />);
+    fireEvent.change(screen.getByLabelText("Font for Hello"), {
+      target: { value: "Georgia, serif" },
+    });
+    expect(onStyleChange).toHaveBeenCalledWith("t1", {
+      fontFamily: "Georgia, serif",
+    });
+  });
+
+  it("uses fonts injected on the provider", () => {
+    const text: Annotation = {
+      id: "t1",
+      kind: "text",
+      label: "Hello",
+      coordinate: [-73.9, 40.7],
+    };
+    render(
+      <AnnotateProvider
+        initialAnnotations={[text]}
+        fonts={[
+          { family: "", label: "System" },
+          {
+            family: '"Inter"',
+            label: "Inter",
+            stylesheet: "https://fonts.example/inter.css",
+          },
+        ]}
+      >
+        <AnnotateList />
+      </AnnotateProvider>,
+    );
+    expect(screen.getByRole("option", { name: "Inter" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Georgia" })).toBeNull();
+    expect(
+      document.querySelector('link[href="https://fonts.example/inter.css"]'),
+    ).toBeTruthy();
+  });
+
+  it("sets size on arrow and bidirectional arrows", () => {
+    const onStyleChange = vi.fn();
+    const arrow: Annotation = {
+      id: "a1",
+      kind: "arrow",
+      label: "North",
+      coordinates: [
+        [-73.9, 40.7],
+        [-73.8, 40.8],
+      ],
+    };
+    const both: Annotation = {
+      id: "a2",
+      kind: "bidirectional-arrow",
+      label: "South",
+      coordinates: [
+        [-73.9, 40.7],
+        [-73.8, 40.8],
+      ],
+      style: { strokeWidth: 4 },
+    };
+    render(
+      <AnnotateList
+        annotations={[arrow, both, line]}
+        onStyleChange={onStyleChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Size for North"), {
+      target: { value: "8" },
+    });
+    expect(onStyleChange).toHaveBeenCalledWith("a1", { strokeWidth: 8 });
+    fireEvent.change(screen.getByLabelText("Size for South"), {
+      target: { value: "2" },
+    });
+    expect(onStyleChange).toHaveBeenCalledWith("a2", { strokeWidth: 2 });
+    expect(screen.queryByLabelText("Size for North fence")).toBeNull();
+  });
+
+  it("highlights the selected annotation", () => {
+    const other: Annotation = {
+      ...line,
+      id: "l2",
+      label: "South fence",
+    };
+    render(<AnnotateList annotations={[line, other]} selectedId="l2" />);
+    const items = screen.getAllByRole("listitem");
+    expect(items[0]?.getAttribute("aria-selected")).toBe("false");
+    expect(items[1]?.getAttribute("aria-selected")).toBe("true");
+    expect(items[1]?.className).toContain("rma-list-item--selected");
+  });
+
+  it("selects an annotation from the list", async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(<AnnotateList annotations={[line]} onSelect={onSelect} />);
+    await user.click(screen.getByLabelText("Label for Line"));
+    expect(onSelect).toHaveBeenCalledWith("l1");
+  });
 });

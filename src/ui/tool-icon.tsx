@@ -93,6 +93,14 @@ export function AnnotateToolIcon({
           <circle cx="12" cy="10.2" r="1.8" />
         </svg>
       );
+    case "text":
+      return (
+        <svg {...common}>
+          <path d="M5 6 H19" />
+          <path d="M12 6 V19" />
+          <path d="M8 19 H16" />
+        </svg>
+      );
     default:
       return null;
   }

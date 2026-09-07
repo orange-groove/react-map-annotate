@@ -3,7 +3,11 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { AnnotateProvider } from "./annotate-context";
 import type { Annotation } from "../core/types";
-import { useAnnotateItems, useAnnotateTools } from "./use-annotate-controls";
+import {
+  useAnnotateItems,
+  useAnnotateFonts,
+  useAnnotateTools,
+} from "./use-annotate-controls";
 
 const line: Annotation = {
   id: "l1",
@@ -38,6 +42,8 @@ describe("useAnnotateTools", () => {
     expect(result.current.tool).toBe("polygon");
     expect(result.current.items[1]?.active).toBe(true);
     expect(result.current.canFinish).toBe(true);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.undo).toBeTypeOf("function");
   });
 });
 
@@ -47,6 +53,11 @@ describe("useAnnotateItems", () => {
     expect(result.current).toHaveLength(1);
     expect(result.current[0]?.kindLabel).toBe("Line");
     expect(result.current[0]?.color).toBe("#2563eb");
+    expect(result.current[0]?.isSelected).toBe(false);
+    act(() => {
+      result.current[0]?.select();
+    });
+    expect(result.current[0]?.isSelected).toBe(true);
     act(() => {
       result.current[0]?.setLabel("South fence");
       result.current[0]?.setColor("#ef4444");
@@ -57,5 +68,20 @@ describe("useAnnotateItems", () => {
       result.current[0]?.remove();
     });
     expect(result.current).toHaveLength(0);
+  });
+});
+
+describe("useAnnotateFonts", () => {
+  it("returns the provider font catalog", () => {
+    const fonts = [
+      { family: "", label: "System" },
+      { family: '"Inter"', label: "Inter" },
+    ];
+    const { result } = renderHook(() => useAnnotateFonts(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AnnotateProvider fonts={fonts}>{children}</AnnotateProvider>
+      ),
+    });
+    expect(result.current).toEqual(fonts);
   });
 });

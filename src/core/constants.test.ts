@@ -6,6 +6,7 @@ import {
   isClickVertexTool,
   isDragTool,
   isDrawingTool,
+  isPointTool,
 } from "./constants";
 
 describe("tool helpers", () => {
@@ -14,6 +15,7 @@ describe("tool helpers", () => {
     expect(isDrawingTool(undefined)).toBe(false);
     expect(isDrawingTool("line")).toBe(true);
     expect(isDrawingTool("marker")).toBe(true);
+    expect(isDrawingTool("text")).toBe(true);
   });
 
   it("classifies drag and click-vertex tools", () => {
@@ -24,6 +26,9 @@ describe("tool helpers", () => {
     expect(isClickVertexTool("polygon")).toBe(true);
     expect(isClickVertexTool("measure")).toBe(true);
     expect(isClickVertexTool("draw")).toBe(false);
+    expect(isPointTool("text")).toBe(true);
+    expect(isPointTool("marker")).toBe(true);
+    expect(isPointTool("line")).toBe(false);
   });
 });
 

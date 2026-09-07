@@ -5,5 +5,5 @@ export function createAnnotationId(): string {
   ) {
     return crypto.randomUUID();
   }
-  return `rmga-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `rma-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

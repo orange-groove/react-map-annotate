@@ -71,7 +71,7 @@ The stock toolbar and list are example consumers of that API, not the API.
 | Real distances                             | Haversine paths, 10 m geodesic samples, optional terrain elevation. |
 | No `mapRef` drawing loop                   | `<Annotate />` is a map child. It calls `useMap()` itself.          |
 
-Freehand, lines, arrows, bidirectional arrows, circles, rectangles, polygons, geodesic measure, and labeled markers. Hover to move. Drag handles to reshape. Finish commits. Escape cancels.
+Freehand, lines, arrows, bidirectional arrows, circles, rectangles, polygons, geodesic measure, labeled markers, and resizable text. Hover to move. Drag handles to reshape. Finish, Enter, or Escape commits.
 
 ## Custom control is the API
 
@@ -81,8 +81,17 @@ You never have to use the bundled toolbar.
 import { useAnnotateTools } from "@orange-groove/react-map-annotate/core";
 
 function TextToolbar() {
-  const { items, finish, canFinish, selectedId, deleteSelected } =
-    useAnnotateTools();
+  const {
+    items,
+    finish,
+    canFinish,
+    selectedId,
+    deleteSelected,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useAnnotateTools();
 
   return (
     <div role="toolbar">
@@ -93,6 +102,12 @@ function TextToolbar() {
       ))}
       <button disabled={!canFinish} onClick={finish}>
         Finish
+      </button>
+      <button disabled={!canUndo} onClick={undo}>
+        Undo
+      </button>
+      <button disabled={!canRedo} onClick={redo}>
+        Redo
       </button>
       <button disabled={!selectedId} onClick={deleteSelected}>
         Delete
@@ -105,19 +120,69 @@ function TextToolbar() {
 Or skip the helper and drive the session from any UI you already have:
 
 ```tsx
-const { tool, setTool, finish, canFinish, setLabel, setColor, onDelete } =
-  useAnnotate();
+const {
+  tool,
+  setTool,
+  finish,
+  canFinish,
+  setLabel,
+  setColor,
+  setStyle,
+  onDelete,
+} = useAnnotate();
 
 setTool("polygon");
 finish();
 setLabel(id, "North fence");
 setColor(id, "#ef4444");
+setStyle(id, { fontFamily: "Georgia, serif" });
+setStyle(id, { strokeWidth: 6 });
 onDelete(id);
 ```
 
 That is the difference. Other libraries let you **listen**. This one lets you **command**.
 
-Full samples: [`examples/custom-toolbar.tsx`](./examples/custom-toolbar.tsx), [`examples/custom-list.tsx`](./examples/custom-list.tsx), [`examples/headless.tsx`](./examples/headless.tsx).
+Full samples: [`examples/custom-toolbar.tsx`](./examples/custom-toolbar.tsx), [`examples/custom-list.tsx`](./examples/custom-list.tsx), [`examples/headless.tsx`](./examples/headless.tsx), [`examples/fonts.tsx`](./examples/fonts.tsx).
+
+## Fonts
+
+Pass a catalog on `AnnotateProvider`. The stock list uses it, new text can default to one of your families, and custom UI reads the same list from `useAnnotateFonts()`.
+
+```tsx
+import {
+  AnnotateProvider,
+  TEXT_FONTS,
+  type AnnotateFont,
+} from "@orange-groove/react-map-annotate/core";
+
+const fonts: AnnotateFont[] = [
+  ...TEXT_FONTS,
+  {
+    family: '"Inter"',
+    label: "Inter",
+    stylesheet:
+      "https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap",
+  },
+  {
+    family: "Outfit",
+    label: "Outfit",
+    source: "url(/fonts/outfit.woff2)",
+  },
+];
+
+<AnnotateProvider fonts={fonts} defaultFontFamily='"Inter"'>
+  {/* map, toolbar, list */}
+</AnnotateProvider>;
+```
+
+`stylesheet` injects a `<link>`. `source` registers a `FontFace`. `family` is what gets stored on `annotation.style.fontFamily` and applied to the map text. Omit `fonts` to keep the built-in web-safe list. Spread `TEXT_FONTS` if you want those plus your own.
+
+Your own picker:
+
+```tsx
+const fonts = useAnnotateFonts();
+item.setStyle({ fontFamily: fonts[1]?.family });
+```
 
 ## Install
 
@@ -197,12 +262,14 @@ Google needs a `mapId` (the public `DEMO_MAP_ID` is enough) so labels and handle
 
 ## How drawing feels
 
-Pick a tool. Draw. Press **Finish** (or Enter). Escape cancels.
+Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 
 - **Freehand, circle, rectangle** — complete on mouse up.
 - **Line, arrow, bidirectional arrow, measure** — complete on the second click.
 - **Polygon** — click vertices, then Finish.
-- **Edit** — hover a finished shape to move it. End handles resize lines, arrows, and measures. Vertices resize polygons and rectangles. A diagonal handle resizes circles.
+- **Marker** — click to drop a pin.
+- **Text** — click to place. Type to edit. Corner handle resizes. Color from the list.
+- **Edit** — hover or select a finished shape to move it. End handles resize lines, arrows, and measures. Vertices resize polygons and rectangles. A diagonal handle resizes circles. Hollow mid-edge handles insert vertices on polygons and paths. Double-click a vertex (or select it and press Delete) to remove it. Undo / redo from the toolbar or ⌘Z / ⇧⌘Z.
 
 ```tsx
 <Annotate
@@ -219,6 +286,9 @@ Pick a tool. Draw. Press **Finish** (or Enter). Escape cancels.
       />
     </svg>
   )}
+  renderLabel={({ annotation }) => (
+    <span className="chip">{annotation.label}</span>
+  )}
 />
 ```
 
@@ -226,31 +296,33 @@ Measure paths are densified along the geodesic every 10 meters. With terrain ena
 
 ## Tools
 
-| Tool                  | What it does                                         |
-| --------------------- | ---------------------------------------------------- |
-| Freehand              | Sketch a path. Hover for a bounds box; drag to move. |
-| Line                  | Two-click segment. Hover ends to resize.             |
-| Arrow / bidirectional | Line plus SVG heads you can replace.                 |
-| Circle                | Drag to create. Hover for a resize handle.           |
-| Rectangle             | Drag to create. Hover vertices to resize.            |
-| Polygon               | Click vertices, Finish to close.                     |
-| Measure               | Geodesic length, optional terrain samples.           |
-| Marker                | Labeled map pin. Drag the pin to move it.            |
-| Finish                | Commit the draft (same as Enter).                    |
+| Tool                  | What it does                                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Freehand              | Sketch a path. Hover for a bounds box; drag to move.                                                                               |
+| Line                  | Two-click segment. Hover ends to resize.                                                                                           |
+| Arrow / bidirectional | Line plus SVG heads. Size from the list, or `setStyle({ strokeWidth })` — widens the shaft and the heads.                          |
+| Circle                | Drag to create. Hover for a resize handle.                                                                                         |
+| Rectangle             | Drag to create. Hover vertices to resize.                                                                                          |
+| Polygon               | Click vertices, Finish to close.                                                                                                   |
+| Measure               | Geodesic length, optional terrain samples.                                                                                         |
+| Marker                | Labeled map pin. Drag the pin to move it.                                                                                          |
+| Text                  | Click to place. Drag to move, corner to resize. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
+| Finish                | Commit the draft (same as Enter).                                                                                                  |
 
 ## API snapshot
 
-| Export               | Role                                                         |
-| -------------------- | ------------------------------------------------------------ |
-| `/core`              | Session, hooks, types, utils, toolbar, list — no `Annotate`. |
-| `AnnotateProvider`   | Session. Optional `annotations` / `onChange`.                |
-| `Annotate`           | Map child. Drawing, hover handles, layers.                   |
-| `AnnotateToolbar`    | Stock icon toolbar — optional.                               |
-| `AnnotateList`       | Stock label / color / delete list — optional.                |
-| `useAnnotate()`      | Full session: `setTool`, `setLabel`, `setColor`, `finish`, … |
-| `useAnnotateTools()` | `{ items, finish, canFinish, deleteSelected }`               |
-| `useAnnotateItems()` | Rows with `setLabel`, `setColor`, `remove`.                  |
-| `AnnotateToolIcon`   | Bundled tool SVG.                                            |
+| Export               | Role                                                                            |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `/core`              | Session, hooks, types, utils, toolbar, list — no `Annotate`.                    |
+| `AnnotateProvider`   | Session. Optional `annotations` / `onChange` / `fonts`.                         |
+| `Annotate`           | Map child. Drawing, hover handles, layers.                                      |
+| `AnnotateToolbar`    | Stock icon toolbar — optional.                                                  |
+| `AnnotateList`       | Stock label / color / font / size / delete list — optional.                     |
+| `useAnnotate()`      | Full session: `setTool`, `setLabel`, `setStyle`, `fonts`, …                     |
+| `useAnnotateTools()` | `{ items, finish, canFinish, deleteSelected, undo, redo }`                      |
+| `useAnnotateItems()` | Rows with `isSelected`, `select`, `setLabel`, `setColor`, `setStyle`, `remove`. |
+| `useAnnotateFonts()` | Font catalog from the provider.                                                 |
+| `AnnotateToolIcon`   | Bundled tool SVG.                                                               |
 
 Types ship with the package: `Annotation`, `AnnotateTool`, `AnnotateSession`, and the rest.
 

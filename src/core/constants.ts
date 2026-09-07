@@ -1,6 +1,6 @@
-import type { AnnotateTool, AnnotationKind } from "./types";
+import type { AnnotateFont, AnnotateTool, AnnotationKind } from "./types";
 
-export const LAYER_PREFIX = "rmga";
+export const LAYER_PREFIX = "rma";
 
 export const SOURCE_IDS = {
   lines: `${LAYER_PREFIX}-lines`,
@@ -33,6 +33,31 @@ export const SELECTABLE_LAYER_IDS = [
 
 export const DEFAULT_COLOR = "#2563eb";
 export const DEFAULT_STROKE_WIDTH = 3;
+export const MIN_STROKE_WIDTH = 1;
+export const MAX_STROKE_WIDTH = 16;
+export const DEFAULT_ARROW_HEAD_SIZE = 26;
+export const MIN_ARROW_HEAD_SIZE = 12;
+
+export function clampStrokeWidth(width: number): number {
+  return Math.min(
+    MAX_STROKE_WIDTH,
+    Math.max(MIN_STROKE_WIDTH, Math.round(width)),
+  );
+}
+
+export function arrowHeadSize(strokeWidth = DEFAULT_STROKE_WIDTH): number {
+  return Math.max(
+    MIN_ARROW_HEAD_SIZE,
+    Math.round(
+      (clampStrokeWidth(strokeWidth) / DEFAULT_STROKE_WIDTH) *
+        DEFAULT_ARROW_HEAD_SIZE,
+    ),
+  );
+}
+
+export const DEFAULT_FONT_SIZE = 28;
+export const MIN_TEXT_FONT_SIZE = 12;
+export const MAX_TEXT_FONT_SIZE = 160;
 export const SAMPLE_INTERVAL_METERS = 10;
 export const HANDLE_HIT_PX = 20;
 export const MAPBOX_TERRAIN_DEM = "mapbox://mapbox.mapbox-terrain-dem-v1";
@@ -48,6 +73,7 @@ export const DRAW_TOOLS: AnnotateTool[] = [
   "polygon",
   "measure",
   "marker",
+  "text",
 ];
 
 export const CLICK_VERTEX_TOOLS: AnnotationKind[] = [
@@ -70,6 +96,7 @@ export const DEFAULT_TOOLBAR_TOOLS: AnnotateTool[] = [
   "polygon",
   "measure",
   "marker",
+  "text",
 ];
 
 export const TOOL_LABELS: Record<AnnotateTool, string> = {
@@ -83,6 +110,7 @@ export const TOOL_LABELS: Record<AnnotateTool, string> = {
   polygon: "Polygon",
   measure: "Measure",
   marker: "Marker",
+  text: "Text",
 };
 
 export const DEFAULT_LABELS: Record<AnnotationKind, string> = {
@@ -95,7 +123,24 @@ export const DEFAULT_LABELS: Record<AnnotationKind, string> = {
   polygon: "Polygon",
   measure: "Measure",
   marker: "Marker",
+  text: "Text",
 };
+
+export const TEXT_FONTS: AnnotateFont[] = [
+  { family: "", label: "System" },
+  { family: "Georgia, serif", label: "Georgia" },
+  { family: '"Times New Roman", Times, serif', label: "Times" },
+  { family: "Arial, Helvetica, sans-serif", label: "Arial" },
+  { family: '"Courier New", Courier, monospace', label: "Courier" },
+  { family: '"Comic Sans MS", cursive', label: "Comic Sans" },
+  { family: "Impact, Haettenschweiler, sans-serif", label: "Impact" },
+];
+
+/** @deprecated Use TEXT_FONTS */
+export const TEXT_FONT_OPTIONS = TEXT_FONTS.map((font) => ({
+  value: font.family,
+  label: font.label ?? font.family,
+}));
 
 export function isDrawingTool(tool: AnnotateTool | undefined): boolean {
   return tool != null && tool !== "select";
@@ -111,6 +156,12 @@ export function isClickVertexTool(
   tool: AnnotateTool,
 ): tool is (typeof CLICK_VERTEX_TOOLS)[number] {
   return (CLICK_VERTEX_TOOLS as readonly AnnotateTool[]).includes(tool);
+}
+
+export function isPointTool(
+  tool: AnnotateTool | AnnotationKind,
+): tool is "marker" | "text" {
+  return tool === "marker" || tool === "text";
 }
 
 export function isAnnotateLayerId(layerId: string | undefined): boolean {

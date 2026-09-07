@@ -73,4 +73,25 @@ describe("AnnotationLabel", () => {
       expect.objectContaining({ id: "line-1", label: "North fence" }),
     );
   });
+
+  it("renders a custom label", () => {
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={annotation}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+          render={({ annotation, selected }) => (
+            <span data-selected={selected ? "yes" : "no"}>
+              custom:{annotation.label}
+            </span>
+          )}
+        />
+      </TestMapGl>,
+    );
+    expect(screen.getByText("custom:Route")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Route" })).toBeNull();
+  });
 });

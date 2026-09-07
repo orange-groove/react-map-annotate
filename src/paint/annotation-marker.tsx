@@ -78,8 +78,8 @@ export function AnnotationMarker({
       }}
     >
       <div
-        className="rmga-marker-hit"
-        data-rmga-handle
+        className="rma-marker-hit"
+        data-rma-handle
         style={{ cursor: "grab", touchAction: "none", userSelect: "none" }}
         onPointerDown={onPointerDown}
       >

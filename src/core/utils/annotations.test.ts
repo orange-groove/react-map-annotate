@@ -8,14 +8,17 @@ import {
   cssColorForInput,
   committedDraftCoordinates,
   isAreaAnnotation,
+  isArrowAnnotation,
   isMarkerAnnotation,
   isPathAnnotation,
+  isTextAnnotation,
   labelAnchor,
   minVerticesForKind,
   previewCoordinates,
   removeAnnotation,
   setAnnotationColor,
   setAnnotationLabel,
+  setAnnotationStyle,
   updateAnnotationColor,
   updateAnnotationLabel,
   upsertAnnotation,
@@ -110,6 +113,16 @@ describe("annotationFromDraft", () => {
     expect(annotation.label).toBe(DEFAULT_LABELS.polygon);
   });
 
+  it("closes a polygon using the cursor as the last vertex", () => {
+    const annotation = annotationFromDraft(
+      draft("polygon", [origin, east], north),
+      { id: "poly-cursor" },
+    );
+    expect(annotation?.kind).toBe("polygon");
+    if (annotation?.kind !== "polygon") return;
+    expect(annotation.coordinates).toEqual([origin, east, north, origin]);
+  });
+
   it("creates a labeled marker", () => {
     const annotation = annotationFromDraft(draft("marker", [origin]), {
       id: "pin",
@@ -125,6 +138,29 @@ describe("annotationFromDraft", () => {
     expect(annotation && isMarkerAnnotation(annotation)).toBe(true);
   });
 
+  it("creates a colored text annotation", () => {
+    const annotation = annotationFromDraft(draft("text", [origin]), {
+      id: "note",
+      color: "#ef4444",
+    });
+    expect(annotation).toMatchObject({
+      id: "note",
+      kind: "text",
+      label: DEFAULT_LABELS.text,
+      coordinate: origin,
+      style: { color: "#ef4444", fontSize: 28 },
+    });
+    expect(annotation && isTextAnnotation(annotation)).toBe(true);
+  });
+
+  it("applies a default font family to new text", () => {
+    const annotation = annotationFromDraft(draft("text", [origin]), {
+      id: "note",
+      fontFamily: '"Inter", sans-serif',
+    });
+    expect(annotation?.style?.fontFamily).toBe('"Inter", sans-serif');
+  });
+
   it("samples measure paths every 10 m", () => {
     const annotation = annotationFromDraft(draft("measure", [origin, east]), {
       id: "measure",
@@ -138,6 +174,7 @@ describe("annotationFromDraft", () => {
 
   it("rejects incomplete drafts for every kind", () => {
     expect(annotationFromDraft(draft("marker", []))).toBeNull();
+    expect(annotationFromDraft(draft("text", []))).toBeNull();
     expect(annotationFromDraft(draft("line", [origin]))).toBeNull();
     expect(annotationFromDraft(draft("arrow", [origin]))).toBeNull();
     expect(
@@ -182,8 +219,11 @@ describe("draft helpers", () => {
   it("knows when a draft can finish", () => {
     expect(canFinishDraft(null)).toBe(false);
     expect(canFinishDraft(draft("marker", [origin]))).toBe(true);
+    expect(canFinishDraft(draft("text", [origin]))).toBe(true);
     expect(canFinishDraft(draft("polygon", [origin, east]))).toBe(false);
+    expect(canFinishDraft(draft("polygon", [origin, east], north))).toBe(true);
     expect(canFinishDraft(draft("polygon", [origin, east, north]))).toBe(true);
+    expect(canFinishDraft(draft("circle", [origin], east))).toBe(true);
     expect(canFinishDraft(draft("line", [origin, east]))).toBe(true);
     expect(canFinishDraft(draft("draw", [origin], east))).toBe(true);
   });
@@ -198,6 +238,7 @@ describe("draft helpers", () => {
 
   it("reports minimum vertices per kind", () => {
     expect(minVerticesForKind("marker")).toBe(1);
+    expect(minVerticesForKind("text")).toBe(1);
     expect(minVerticesForKind("polygon")).toBe(3);
     expect(minVerticesForKind("line")).toBe(2);
   });
@@ -214,6 +255,7 @@ describe("labels and collection updates", () => {
   it("places a label on every annotation kind", () => {
     const kinds: DraftAnnotation[] = [
       draft("marker", [origin]),
+      draft("text", [origin]),
       draft("line", [origin, east]),
       draft("arrow", [origin, east]),
       draft("bidirectional-arrow", [origin, east]),
@@ -240,6 +282,22 @@ describe("labels and collection updates", () => {
     ).toBe("#22c55e");
     expect(cssColorForInput("#f00", "#2563eb")).toBe("#ff0000");
     expect(cssColorForInput("red", "#2563eb")).toBe("#2563eb");
+  });
+
+  it("clamps arrow stroke width", () => {
+    const arrow = annotationFromDraft(draft("arrow", [origin, east]), {
+      id: "arrow",
+    })!;
+    expect(isArrowAnnotation(arrow)).toBe(true);
+    expect(
+      setAnnotationStyle(arrow, { strokeWidth: 6 }).style?.strokeWidth,
+    ).toBe(6);
+    expect(
+      setAnnotationStyle(arrow, { strokeWidth: 99 }).style?.strokeWidth,
+    ).toBe(16);
+    expect(
+      setAnnotationStyle(arrow, { strokeWidth: 0 }).style?.strokeWidth,
+    ).toBe(1);
   });
 
   it("updates a label from the outside", () => {

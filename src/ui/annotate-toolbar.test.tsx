@@ -22,8 +22,9 @@ describe("AnnotateToolbar", () => {
     expect(screen.getByRole("button", { name: "Polygon" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Measure" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Marker" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Text" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Finish drawing" })).toBeTruthy();
-    expect(DEFAULT_TOOLBAR_TOOLS).toHaveLength(9);
+    expect(DEFAULT_TOOLBAR_TOOLS).toHaveLength(10);
   });
 
   it("notifies the host when a tool is chosen", async () => {
@@ -49,6 +50,21 @@ describe("AnnotateToolbar", () => {
       screen.getByRole("button", { name: "Delete selected annotation" }),
     );
     expect(onDeleteSelected).toHaveBeenCalled();
+  });
+
+  it("undoes from the toolbar", async () => {
+    const onUndo = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <AnnotateToolbar
+        tool="select"
+        onToolChange={() => undefined}
+        onUndo={onUndo}
+        canUndo
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(onUndo).toHaveBeenCalled();
   });
 
   it("finishes the current drawing", async () => {

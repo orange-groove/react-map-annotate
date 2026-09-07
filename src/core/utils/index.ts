@@ -30,7 +30,9 @@ export { createAnnotationId } from "./ids";
 export {
   isPathAnnotation,
   isAreaAnnotation,
+  isArrowAnnotation,
   isMarkerAnnotation,
+  isTextAnnotation,
   previewCoordinates,
   committedDraftCoordinates,
   labelAnchor,
@@ -51,6 +53,10 @@ export {
 export {
   offsetLngLat,
   moveAnnotation,
+  textFontSize,
+  clampTextFontSize,
+  resizeText,
+  textHitSize,
   resizeRectangleVertex,
   movePolygonVertex,
   resizeCircle,
@@ -58,6 +64,12 @@ export {
   drawBoundsRing,
   editableVertices,
   movePathEndpoint,
+  movePathVertex,
+  insertVertex,
+  removeVertex,
+  canInsertVertices,
+  canRemoveVertex,
+  insertHandlesFor,
   editHandlesFor,
   hitEditHandle,
   applyEditHandle,
@@ -73,6 +85,14 @@ export {
 export type { ArrowMarker, AnnotationFeatures } from "./features";
 
 export { hitTestAnnotations, distanceToSegment, pointInRing } from "./hit-test";
+
+export {
+  resolveAnnotateFonts,
+  fontPickerOptions,
+  fontStylesheetHrefs,
+  fontFaceFamilyName,
+  loadAnnotateFontFaces,
+} from "./fonts";
 
 export {
   isUiTarget,

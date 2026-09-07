@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AnnotateProvider } from "./annotate-context";
 import type { Annotation } from "../core/types";
@@ -67,10 +67,149 @@ describe("useAnnotate", () => {
     ).toBe("#ef4444");
 
     act(() => {
+      result.current.setStyle("l1", { fontFamily: "Georgia, serif" });
+    });
+    expect(
+      result.current.annotations.find((item) => item.id === "l1")?.style
+        ?.fontFamily,
+    ).toBe("Georgia, serif");
+
+    act(() => {
       result.current.onDelete("l1");
     });
     expect(result.current.annotations.map((item) => item.id)).toEqual(["m1"]);
     expect(result.current.selectedId).toBeNull();
+  });
+
+  it("undoes and redoes annotation changes", () => {
+    const { result } = renderHook(() => useAnnotate(), { wrapper });
+    act(() => {
+      result.current.onAdd(line);
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual([
+      "m1",
+      "l1",
+    ]);
+    expect(result.current.canUndo).toBe(true);
+    act(() => {
+      result.current.undo();
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual(["m1"]);
+    expect(result.current.canRedo).toBe(true);
+    act(() => {
+      result.current.redo();
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual([
+      "m1",
+      "l1",
+    ]);
+  });
+
+  it("keeps undo available when the host owns annotation state", () => {
+    function Controlled({ children }: { children: ReactNode }) {
+      const [annotations, setAnnotations] = useState<Annotation[]>([marker]);
+      return (
+        <AnnotateProvider annotations={annotations} onChange={setAnnotations}>
+          {children}
+        </AnnotateProvider>
+      );
+    }
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: Controlled,
+    });
+    act(() => {
+      result.current.onAdd(line);
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual([
+      "m1",
+      "l1",
+    ]);
+    expect(result.current.canUndo).toBe(true);
+    act(() => {
+      result.current.undo();
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual(["m1"]);
+    expect(result.current.canRedo).toBe(true);
+    act(() => {
+      result.current.redo();
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual([
+      "m1",
+      "l1",
+    ]);
+  });
+
+  it("coalesces live edits into a single undo step", () => {
+    const { result } = renderHook(() => useAnnotate(), { wrapper });
+    act(() => {
+      result.current.onAdd(line);
+    });
+    act(() => {
+      result.current.onUpdate({
+        ...line,
+        coordinates: [
+          [-73.9, 40.7],
+          [-73.7, 40.8],
+        ],
+      });
+      result.current.onUpdate({
+        ...line,
+        coordinates: [
+          [-73.9, 40.7],
+          [-73.6, 40.8],
+        ],
+      });
+      result.current.endEdit();
+    });
+    act(() => {
+      result.current.undo();
+    });
+    const undone = result.current.annotations.find((item) => item.id === "l1");
+    expect(undone?.kind).toBe("line");
+    if (undone?.kind !== "line") throw new Error("expected line");
+    expect(undone.coordinates).toEqual([
+      [-73.9, 40.7],
+      [-73.8, 40.8],
+    ]);
+  });
+
+  it("removes a selected vertex instead of the whole annotation", () => {
+    const polygon: Annotation = {
+      id: "p1",
+      kind: "polygon",
+      label: "Lot",
+      coordinates: [
+        [-73.9, 40.7],
+        [-73.8, 40.7],
+        [-73.8, 40.8],
+        [-73.9, 40.8],
+        [-73.9, 40.7],
+      ],
+    };
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: ({ children }) => (
+        <AnnotateProvider initialAnnotations={[polygon]}>
+          {children}
+        </AnnotateProvider>
+      ),
+    });
+    act(() => {
+      result.current.setSelectedId("p1");
+      result.current.setSelectedVertexIndex(1);
+      result.current.removeSelected();
+    });
+    const next = result.current.annotations[0];
+    expect(next?.kind).toBe("polygon");
+    if (next?.kind !== "polygon") throw new Error("expected polygon");
+    expect(next.coordinates).toHaveLength(4);
+    act(() => {
+      result.current.undo();
+    });
+    expect(result.current.annotations[0]?.kind).toBe("polygon");
+    if (result.current.annotations[0]?.kind !== "polygon") {
+      throw new Error("expected polygon");
+    }
+    expect(result.current.annotations[0].coordinates).toHaveLength(5);
   });
 
   it("changes the active tool", () => {

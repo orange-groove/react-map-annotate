@@ -1,4 +1,9 @@
-import { DEFAULT_COLOR, DEFAULT_STROKE_WIDTH } from "../constants";
+import {
+  DEFAULT_COLOR,
+  DEFAULT_STROKE_WIDTH,
+  arrowHeadSize,
+  isPointTool,
+} from "../constants";
 import type {
   Annotation,
   DraftAnnotation,
@@ -27,6 +32,7 @@ export interface ArrowMarker {
   direction: "start" | "end";
   color: string;
   selected: boolean;
+  size: number;
 }
 
 export interface AnnotationFeatures {
@@ -122,9 +128,11 @@ function arrowsFor(
   annotation: PathAnnotation,
   color: string,
   selected: boolean,
+  strokeWidth: number,
 ): ArrowMarker[] {
   const coords = annotation.coordinates;
   if (coords.length < 2) return [];
+  const size = arrowHeadSize(strokeWidth);
   const arrows: ArrowMarker[] = [];
   if (
     annotation.kind === "arrow" ||
@@ -140,6 +148,7 @@ function arrowsFor(
       direction: "end",
       color,
       selected,
+      size,
     });
   }
   if (annotation.kind === "bidirectional-arrow") {
@@ -150,6 +159,7 @@ function arrowsFor(
       direction: "start",
       color,
       selected,
+      size,
     });
   }
   return arrows;
@@ -182,6 +192,7 @@ export function buildAnnotationFeatures({
     const selected = annotation.id === selectedId;
     const color = annotationColor(annotation, defaultColor);
     if (isPathAnnotation(annotation)) {
+      const strokeWidth = annotation.style?.strokeWidth ?? defaultStrokeWidth;
       lineFeatures.push(
         lineFeature(
           annotation.id,
@@ -189,10 +200,10 @@ export function buildAnnotationFeatures({
           annotation.coordinates,
           selected,
           color,
-          annotation.style?.strokeWidth ?? defaultStrokeWidth,
+          strokeWidth,
         ),
       );
-      arrows.push(...arrowsFor(annotation, color, selected));
+      arrows.push(...arrowsFor(annotation, color, selected, strokeWidth));
       if (annotation.kind === "draw" && annotation.id === hoveredId) {
         const box = drawBoundsRing(annotation);
         if (box.length >= 4) {
@@ -279,7 +290,7 @@ export function buildAnnotationFeatures({
           ),
         );
       }
-    } else if (draft.kind !== "marker") {
+    } else if (!isPointTool(draft.kind)) {
       const area = draftAreaCoordinates(draft);
       if (area.length >= 4) {
         fillFeatures.push(

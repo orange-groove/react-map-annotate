@@ -6,7 +6,7 @@ export function isUiTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest(
-      "[data-rmga-label], [data-rmga-handle], .mapboxgl-marker, .maplibregl-marker, .leaflet-marker-icon, .rmga-overlay-marker, .rmga-toolbar, input, textarea",
+      "[data-rma-label], [data-rma-handle], .mapboxgl-marker, .maplibregl-marker, .leaflet-marker-icon, .rma-overlay-marker, .rma-toolbar, input, textarea",
     ),
   );
 }

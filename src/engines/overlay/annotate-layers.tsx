@@ -82,6 +82,7 @@ type OverlayAnnotateLayersProps = Pick<
   | "defaultStrokeWidth"
   | "labelsEditable"
   | "renderArrowHead"
+  | "renderLabel"
   | "onSelect"
   | "onLabelChange"
   | "onUpdate"
@@ -107,6 +108,7 @@ function OverlayPaint({
   defaultStrokeWidth,
   labelsEditable = true,
   renderArrowHead,
+  renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
@@ -133,10 +135,10 @@ function OverlayPaint({
   return (
     <>
       <svg
-        className="rmga-overlay-svg"
+        className="rma-overlay-svg"
         overflow="visible"
         aria-hidden
-        data-rmga-tick={tick}
+        data-rma-tick={tick}
       >
         {fills.features.map((feature, index) => {
           const id = String(feature.properties?.id ?? index);
@@ -227,6 +229,7 @@ function OverlayPaint({
         color={color}
         labelsEditable={labelsEditable}
         renderArrowHead={renderArrowHead}
+        renderLabel={renderLabel}
         arrows={arrows}
         markers={markers}
         onSelect={onSelect}

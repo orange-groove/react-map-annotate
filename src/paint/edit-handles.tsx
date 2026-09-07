@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { useRef } from "react";
 import { DEFAULT_COLOR, HANDLE_HIT_PX } from "../core/constants";
 import { useMapGl } from "../engines/kit/context";
 import type { Annotation, LngLat } from "../core/types";
@@ -8,8 +9,10 @@ import {
   applyEditHandle,
   editHandleCursor,
   editHandlesFor,
+  type EditHandleHit,
 } from "../core/utils/edit";
 import { startHandleDrag } from "../interaction/pointer-drag";
+import { useOptionalAnnotate } from "../session/annotate-context";
 
 function CircleResizeIcon() {
   return (
@@ -32,7 +35,7 @@ function CircleResizeIcon() {
   );
 }
 
-function handleHitStyle(kind: "vertex" | "resize"): CSSProperties {
+function handleHitStyle(kind: EditHandleHit["kind"]): CSSProperties {
   const size = HANDLE_HIT_PX * 2;
   return {
     display: "grid",
@@ -47,18 +50,22 @@ function handleHitStyle(kind: "vertex" | "resize"): CSSProperties {
 
 function handleVisualStyle(
   color: string,
-  kind: "vertex" | "resize" = "vertex",
+  kind: EditHandleHit["kind"] = "vertex",
+  selected = false,
 ): CSSProperties {
   return {
-    background: "#ffffff",
+    background: kind === "insert" ? "transparent" : "#ffffff",
     borderStyle: "solid",
-    borderWidth: 2,
+    borderWidth: kind === "insert" ? 1.5 : 2,
     borderColor: color,
     borderRadius: "50%",
     boxSizing: "border-box",
-    boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.9)",
+    boxShadow: selected
+      ? `0 0 0 3px ${color}`
+      : "0 0 0 1px rgba(255, 255, 255, 0.9)",
     color,
     pointerEvents: "none",
+    opacity: kind === "insert" ? 0.85 : 1,
     ...(kind === "resize"
       ? {
           display: "grid",
@@ -67,32 +74,58 @@ function handleVisualStyle(
           height: 22,
           lineHeight: 0,
         }
-      : { width: 11, height: 11 }),
+      : kind === "insert"
+        ? { width: 8, height: 8 }
+        : { width: selected ? 13 : 11, height: selected ? 13 : 11 }),
   };
 }
 
 function HandleMarker({
-  coordinate,
-  kind,
+  annotation,
+  handle,
   color,
   label,
-  onDrag,
+  selected,
+  onUpdate,
   onDragEnd,
+  onSelect,
+  onRemove,
 }: {
-  coordinate: LngLat;
-  kind: "vertex" | "resize";
+  annotation: Annotation;
+  handle: EditHandleHit & { coordinate: LngLat };
   color: string;
   label: string;
-  onDrag: (point: LngLat, grab: { from: LngLat; handle: LngLat }) => void;
+  selected: boolean;
+  onUpdate?: (annotation: Annotation) => void;
   onDragEnd?: () => void;
+  onSelect?: () => void;
+  onRemove?: () => void;
 }) {
   const { Marker, useMap } = useMapGl();
   const maps = useMap();
+  const originRef = useRef(annotation);
+  const { coordinate, kind } = handle;
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     const map = maps.current?.getMap();
     if (!map) return;
-    startHandleDrag(event, map, coordinate, onDrag, onDragEnd);
+    originRef.current = annotation;
+    onSelect?.();
+    startHandleDrag(
+      event,
+      map,
+      coordinate,
+      (point, grab) => {
+        onUpdate?.(
+          applyEditHandle(originRef.current, handle, point, {
+            map,
+            from: grab.from,
+            handleAt: grab.handle,
+          }),
+        );
+      },
+      onDragEnd,
+    );
   }
 
   return (
@@ -104,16 +137,30 @@ function HandleMarker({
       pitchAlignment="viewport"
     >
       <div
-        className="rmga-handle"
+        className="rma-handle"
         style={handleHitStyle(kind)}
-        data-rmga-handle
+        data-rma-handle
         role="slider"
         aria-label={label}
+        aria-valuenow={handle.index}
         onPointerDown={onPointerDown}
+        onDoubleClick={(event) => {
+          if (kind !== "vertex" || !onRemove) return;
+          event.preventDefault();
+          event.stopPropagation();
+          onSelect?.();
+          onRemove();
+        }}
       >
         <div
-          className={kind === "resize" ? "rmga-resize" : "rmga-vertex"}
-          style={handleVisualStyle(color, kind)}
+          className={
+            kind === "resize"
+              ? "rma-resize"
+              : kind === "insert"
+                ? "rma-vertex rma-vertex--insert"
+                : `rma-vertex${selected ? " rma-vertex--selected" : ""}`
+          }
+          style={handleVisualStyle(color, kind, selected)}
         >
           {kind === "resize" ? <CircleResizeIcon /> : null}
         </div>
@@ -138,6 +185,7 @@ export function EditHandles({
   const { useMap } = useMapGl();
   const maps = useMap();
   const map = maps.current?.getMap();
+  const session = useOptionalAnnotate();
 
   if (!activeId) return null;
   const annotation = annotations.find((item) => item.id === activeId);
@@ -155,26 +203,34 @@ export function EditHandles({
       {handles.map((handle) => (
         <HandleMarker
           key={`${annotation.id}-${handle.kind}-${handle.index}`}
-          coordinate={handle.coordinate}
-          kind={handle.kind}
+          annotation={annotation}
+          handle={handle}
           color={color}
+          selected={
+            handle.kind === "vertex" &&
+            session?.selectedId === annotation.id &&
+            session.selectedVertexIndex === handle.index
+          }
           label={
             handle.kind === "resize"
               ? "Resize circle"
-              : annotation.kind === "polygon" || annotation.kind === "rectangle"
-                ? `Resize ${annotation.kind} vertex ${handle.index + 1}`
-                : `Resize ${annotation.kind} ${handle.index === 0 ? "start" : "end"}`
+              : handle.kind === "insert"
+                ? `Add ${annotation.kind} vertex`
+                : `Resize ${annotation.kind} vertex ${handle.index + 1}`
           }
-          onDrag={(point, grab) =>
-            onUpdate?.(
-              applyEditHandle(annotation, handle, point, {
-                map: maps.current?.getMap(),
-                from: grab.from,
-                handleAt: grab.handle,
-              }),
-            )
-          }
+          onSelect={() => {
+            session?.setSelectedId(annotation.id);
+            session?.setSelectedVertexIndex(
+              handle.kind === "insert" ? handle.index + 1 : handle.index,
+            );
+          }}
+          onUpdate={onUpdate}
           onDragEnd={() => onDragEnd?.(annotation.id)}
+          onRemove={
+            handle.kind === "vertex"
+              ? () => session?.removeSelected()
+              : undefined
+          }
         />
       ))}
     </>
@@ -199,13 +255,13 @@ export function DraftVertices({
           anchor="center"
         >
           <div
-            className="rmga-handle"
+            className="rma-handle"
             style={handleHitStyle("vertex")}
-            data-rmga-handle
+            data-rma-handle
             aria-hidden
           >
             <div
-              className={`rmga-vertex${index === 0 ? " rmga-vertex--first" : ""}`}
+              className={`rma-vertex${index === 0 ? " rma-vertex--first" : ""}`}
               style={handleVisualStyle(color)}
             />
           </div>

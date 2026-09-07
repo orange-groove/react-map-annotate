@@ -23,9 +23,6 @@ export function DefaultArrowHead({
       <path
         d="M12 2.2 L20.4 18.4 C20.7 19 20.2 19.7 19.5 19.5 L12 16.8 L4.5 19.5 C3.8 19.7 3.3 19 3.6 18.4 Z"
         fill={color}
-        stroke="#ffffff"
-        strokeWidth="1.25"
-        strokeLinejoin="round"
       />
     </svg>
   );

@@ -40,11 +40,11 @@ const RENDER_EVENTS = ["resize", "drag", "mouse-wheel"] as const;
 function ensureOverlayHost(view: ArcgisView): HTMLElement | null {
   const container = view.container;
   if (!(container instanceof HTMLElement)) return null;
-  const existing = container.querySelector<HTMLElement>(".rmga-arcgis-overlay");
+  const existing = container.querySelector<HTMLElement>(".rma-arcgis-overlay");
   if (existing) return existing;
 
   const host = document.createElement("div");
-  host.className = "rmga-arcgis-overlay";
+  host.className = "rma-arcgis-overlay";
   container.appendChild(host);
   return host;
 }

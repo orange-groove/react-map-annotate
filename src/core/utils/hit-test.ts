@@ -1,11 +1,12 @@
 import type { MapPoint } from "../types";
-import type { Annotation, LngLat } from "../types";
+import type { Annotation, LngLat, TextAnnotation } from "../types";
 import {
   isAreaAnnotation,
   isMarkerAnnotation,
   isPathAnnotation,
+  isTextAnnotation,
 } from "./annotations";
-import { drawBoundsRing } from "./edit";
+import { drawBoundsRing, textHitSize } from "./edit";
 
 const LINE_HIT_PX = 9;
 const MARKER_HIT_HALF_W = 16;
@@ -94,11 +95,36 @@ function hitMarker(
   return dx <= MARKER_HIT_HALF_W && dy >= -4 && dy <= MARKER_HIT_H;
 }
 
+function hitText(
+  project: (lngLat: { lng: number; lat: number }) => MapPoint,
+  point: MapPoint,
+  annotation: TextAnnotation,
+): boolean {
+  const origin = project({
+    lng: annotation.coordinate[0],
+    lat: annotation.coordinate[1],
+  });
+  const { width, height } = textHitSize(annotation);
+  return (
+    point.x >= origin.x - width / 2 &&
+    point.x <= origin.x + width / 2 &&
+    point.y >= origin.y - height / 2 &&
+    point.y <= origin.y + height / 2
+  );
+}
+
 export function hitTestAnnotations(
   project: (lngLat: { lng: number; lat: number }) => MapPoint,
   point: MapPoint,
   annotations: Annotation[],
 ): string | null {
+  for (let index = annotations.length - 1; index >= 0; index -= 1) {
+    const annotation = annotations[index];
+    if (isTextAnnotation(annotation) && hitText(project, point, annotation)) {
+      return annotation.id;
+    }
+  }
+
   for (let index = annotations.length - 1; index >= 0; index -= 1) {
     const annotation = annotations[index];
     if (

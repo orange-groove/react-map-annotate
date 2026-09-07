@@ -6,7 +6,7 @@ import {
   DEFAULT_TOOLBAR_TOOLS,
   TOOL_LABELS,
 } from "../core/constants";
-import type { AnnotateTool, Annotation } from "../core/types";
+import type { AnnotateTool, Annotation, AnnotationStyle } from "../core/types";
 import { canPressFinish, cssColorForInput } from "../core/utils/annotations";
 import { useAnnotate } from "./use-annotate";
 
@@ -24,8 +24,12 @@ export interface AnnotateListItem {
   kindLabel: string;
   label: string;
   color: string;
+  fontFamily?: string;
+  isSelected: boolean;
+  select: () => void;
   setLabel: (label: string) => void;
   setColor: (color: string) => void;
+  setStyle: (style: AnnotationStyle) => void;
   remove: () => void;
 }
 
@@ -45,10 +49,16 @@ export function useAnnotateTools(
     canFinish: canPressFinish(session.tool, session.draft),
     finish: session.finish,
     selectedId: session.selectedId,
-    deleteSelected: () => {
-      if (session.selectedId) session.onDelete(session.selectedId);
-    },
+    deleteSelected: () => session.removeSelected(),
+    undo: session.undo,
+    redo: session.redo,
+    canUndo: session.canUndo,
+    canRedo: session.canRedo,
   };
+}
+
+export function useAnnotateFonts() {
+  return useAnnotate().fonts;
 }
 
 export function useAnnotateItems(defaultColor = DEFAULT_COLOR) {
@@ -60,8 +70,13 @@ export function useAnnotateItems(defaultColor = DEFAULT_COLOR) {
     kindLabel: DEFAULT_LABELS[annotation.kind],
     label: annotation.label,
     color: cssColorForInput(annotation.style?.color, defaultColor),
+    fontFamily: annotation.style?.fontFamily,
+    isSelected: session.selectedId === annotation.id,
+    select: () => session.setSelectedId(annotation.id),
     setLabel: (label: string) => session.setLabel(annotation.id, label),
     setColor: (color: string) => session.setColor(annotation.id, color),
+    setStyle: (style: AnnotationStyle) =>
+      session.setStyle(annotation.id, style),
     remove: () => session.onDelete(annotation.id),
   }));
 }

@@ -13,6 +13,10 @@ export function AnnotateToolbar({
   onDeleteSelected: onDeleteSelectedProp,
   onFinish: onFinishProp,
   canFinish: canFinishProp,
+  onUndo: onUndoProp,
+  onRedo: onRedoProp,
+  canUndo: canUndoProp,
+  canRedo: canRedoProp,
   orientation = "vertical",
   tools = DEFAULT_TOOLBAR_TOOLS,
   className,
@@ -28,14 +32,14 @@ export function AnnotateToolbar({
     canFinishProp ?? canPressFinish(tool, session?.draft ?? null);
   const onDeleteSelected =
     onDeleteSelectedProp ??
-    (session
-      ? () => {
-          if (selectedId) session.onDelete(selectedId);
-        }
-      : undefined);
+    (session ? () => session.removeSelected() : undefined);
+  const onUndo = onUndoProp ?? session?.undo;
+  const onRedo = onRedoProp ?? session?.redo;
+  const canUndo = canUndoProp ?? session?.canUndo ?? false;
+  const canRedo = canRedoProp ?? session?.canRedo ?? false;
   return (
     <div
-      className={["rmga-toolbar", `rmga-toolbar--${orientation}`, className]
+      className={["rma-toolbar", `rma-toolbar--${orientation}`, className]
         .filter(Boolean)
         .join(" ")}
       style={style}
@@ -48,7 +52,7 @@ export function AnnotateToolbar({
           <button
             key={item}
             type="button"
-            className={`rmga-tool${active ? " rmga-tool--active" : ""}`}
+            className={`rma-tool${active ? " rma-tool--active" : ""}`}
             aria-label={TOOL_LABELS[item]}
             aria-pressed={active}
             title={TOOL_LABELS[item]}
@@ -58,9 +62,59 @@ export function AnnotateToolbar({
           </button>
         );
       })}
+      {onUndo ? (
+        <button
+          type="button"
+          className="rma-tool"
+          aria-label="Undo"
+          title="Undo"
+          disabled={!canUndo}
+          onClick={onUndo}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M9 14 4 9l5-5" />
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11" />
+          </svg>
+        </button>
+      ) : null}
+      {onRedo ? (
+        <button
+          type="button"
+          className="rma-tool"
+          aria-label="Redo"
+          title="Redo"
+          disabled={!canRedo}
+          onClick={onRedo}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="m15 14 5-5-5-5" />
+            <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
+          </svg>
+        </button>
+      ) : null}
       <button
         type="button"
-        className="rmga-tool"
+        className="rma-tool"
         aria-label="Finish drawing"
         title="Finish"
         disabled={!canFinish}
@@ -84,7 +138,7 @@ export function AnnotateToolbar({
       {onDeleteSelected ? (
         <button
           type="button"
-          className="rmga-tool rmga-tool--danger"
+          className="rma-tool rma-tool--danger"
           aria-label="Delete selected annotation"
           title="Delete selected"
           disabled={!selectedId}

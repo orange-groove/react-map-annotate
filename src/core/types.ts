@@ -24,7 +24,8 @@ export type AnnotateTool =
   | "rectangle"
   | "polygon"
   | "measure"
-  | "marker";
+  | "marker"
+  | "text";
 
 export type AnnotationKind = Exclude<AnnotateTool, "select">;
 
@@ -32,6 +33,15 @@ export interface AnnotationStyle {
   color?: string;
   strokeWidth?: number;
   fillOpacity?: number;
+  fontSize?: number;
+  fontFamily?: string;
+}
+
+export interface AnnotateFont {
+  family: string;
+  label?: string;
+  stylesheet?: string;
+  source?: string;
 }
 
 export interface ElevationSample {
@@ -73,7 +83,13 @@ export interface MarkerAnnotation extends AnnotationBase {
   coordinate: LngLat;
 }
 
-export type Annotation = PathAnnotation | AreaAnnotation | MarkerAnnotation;
+export interface TextAnnotation extends AnnotationBase {
+  kind: "text";
+  coordinate: LngLat;
+}
+
+export type Annotation =
+  PathAnnotation | AreaAnnotation | MarkerAnnotation | TextAnnotation;
 
 export interface DraftAnnotation {
   kind: AnnotationKind;
@@ -87,6 +103,17 @@ export interface ArrowHeadRenderProps {
   color: string;
   selected: boolean;
   size: number;
+}
+
+export interface LabelRenderProps {
+  annotation: Annotation;
+  selected: boolean;
+  editable: boolean;
+  longitude: number;
+  latitude: number;
+  offset?: [number, number];
+  onSelect?: (id: string) => void;
+  onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
 }
 
 export interface AnnotateCallbacks {
@@ -121,6 +148,7 @@ export interface AnnotateProps extends AnnotateCallbacks {
   interactive?: boolean;
   labelsEditable?: boolean;
   renderArrowHead?: (props: ArrowHeadRenderProps) => ReactNode;
+  renderLabel?: (props: LabelRenderProps) => ReactNode;
 }
 
 export interface AnnotateToolbarProps {
@@ -130,6 +158,10 @@ export interface AnnotateToolbarProps {
   onDeleteSelected?: () => void;
   onFinish?: () => void;
   canFinish?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   orientation?: "vertical" | "horizontal";
   tools?: AnnotateTool[];
   className?: string;
@@ -138,11 +170,15 @@ export interface AnnotateToolbarProps {
 
 export interface AnnotateListProps {
   annotations?: Annotation[];
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
   onLabelChange?: (id: string, label: string) => void;
   onColorChange?: (id: string, color: string) => void;
+  onStyleChange?: (id: string, style: AnnotationStyle) => void;
   onDelete?: (id: string) => void;
   defaultColor?: string;
   emptyMessage?: string;
+  fonts?: AnnotateFont[];
   className?: string;
   style?: CSSProperties;
 }

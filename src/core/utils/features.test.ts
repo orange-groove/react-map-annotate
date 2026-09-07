@@ -26,6 +26,7 @@ const annotations: Annotation[] = [
   make("rectangle", [origin, edge]),
   make("polygon", [origin, edge, third]),
   make("marker", [origin]),
+  make("text", [origin]),
 ];
 
 describe("buildAnnotationFeatures", () => {
@@ -54,11 +55,13 @@ describe("buildAnnotationFeatures", () => {
     expect(kinds).toEqual(["circle", "rectangle", "polygon"]);
   });
 
-  it("keeps markers out of line and fill sources", () => {
+  it("keeps markers and text out of line and fill sources", () => {
     expect(features.markers.map((marker) => marker.id)).toEqual(["marker"]);
     expect(
       features.lines.features.some(
-        (feature) => feature.properties?.kind === "marker",
+        (feature) =>
+          feature.properties?.kind === "marker" ||
+          feature.properties?.kind === "text",
       ),
     ).toBe(false);
   });
@@ -78,6 +81,29 @@ describe("buildAnnotationFeatures", () => {
         .filter((arrow) => arrow.id === "bidirectional-arrow")
         .map((arrow) => arrow.direction),
     ).toEqual(["end", "start"]);
+    expect(features.arrows.every((arrow) => arrow.size === 26)).toBe(true);
+  });
+
+  it("scales the shaft and heads together from strokeWidth", () => {
+    const thick = buildAnnotationFeatures({
+      annotations: [
+        { ...make("arrow", [origin, edge]), style: { strokeWidth: 6 } },
+        {
+          ...make("bidirectional-arrow", [origin, edge]),
+          style: { strokeWidth: 6 },
+        },
+      ],
+    });
+    const thin = buildAnnotationFeatures({
+      annotations: [
+        { ...make("arrow", [origin, edge]), style: { strokeWidth: 1 } },
+      ],
+    });
+    expect(
+      thick.lines.features.map((feature) => feature.properties?.strokeWidth),
+    ).toEqual([6, 6]);
+    expect(thick.arrows.map((arrow) => arrow.size)).toEqual([52, 52, 52]);
+    expect(thin.arrows[0]?.size).toBe(12);
   });
 
   it("samples measure annotations onto a point layer", () => {

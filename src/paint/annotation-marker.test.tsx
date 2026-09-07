@@ -66,7 +66,7 @@ describe("AnnotationMarker", () => {
       </MapGlProvider>,
     );
 
-    const hit = document.querySelector(".rmga-marker-hit");
+    const hit = document.querySelector(".rma-marker-hit");
     expect(hit).toBeTruthy();
     fireEvent.pointerDown(hit!, { clientX: 0, clientY: 0, pointerId: 1 });
     expect(onSelect).toHaveBeenCalledWith("pin-1");

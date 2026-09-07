@@ -132,8 +132,8 @@ describe("getArcgisMapLike", () => {
     const like = getArcgisMapLike(view as unknown as ArcgisView);
     const host = like.getOverlayHost?.();
     expect(host).toBeInstanceOf(HTMLElement);
-    expect(host?.className).toBe("rmga-arcgis-overlay");
-    expect(view.container.querySelector(".rmga-arcgis-overlay")).toBe(host);
+    expect(host?.className).toBe("rma-arcgis-overlay");
+    expect(view.container.querySelector(".rma-arcgis-overlay")).toBe(host);
     expect(host?.parentElement).toBe(view.container);
   });
 

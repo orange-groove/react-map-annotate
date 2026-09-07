@@ -49,7 +49,7 @@ function ArcgisViewDiscovery({ children }: { children: React.ReactNode }) {
 
   return (
     <ArcgisViewContext.Provider value={provided ?? discovered}>
-      <span ref={probeRef} hidden data-rmga-arcgis-probe="" />
+      <span ref={probeRef} hidden data-rma-arcgis-probe="" />
       {children}
     </ArcgisViewContext.Provider>
   );

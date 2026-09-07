@@ -15,6 +15,7 @@ export function Annotate({
   interactive = true,
   labelsEditable = true,
   renderArrowHead,
+  renderLabel,
   ...props
 }: AnnotateProps) {
   const session = useMapSession(props);
@@ -26,6 +27,7 @@ export function Annotate({
     tool: session.tool,
     selectedId: session.selectedId,
     defaultColor: session.defaultColor,
+    defaultFontFamily: session.defaultFontFamily,
     sampleIntervalMeters: session.sampleIntervalMeters,
     onAdd: session.onAdd,
     onUpdate: session.onUpdate,
@@ -34,6 +36,11 @@ export function Annotate({
     onToolChange: session.onToolChange,
     onSelect: session.onSelect,
     onLabelChange: session.onLabelChange,
+    setSelectedVertexIndex: session.session.setSelectedVertexIndex,
+    undo: session.session.undo,
+    redo: session.session.redo,
+    endEdit: session.session.endEdit,
+    removeSelected: session.session.removeSelected,
   });
   latestRef.current = {
     annotations: session.annotations,
@@ -41,6 +48,7 @@ export function Annotate({
     tool: session.tool,
     selectedId: session.selectedId,
     defaultColor: session.defaultColor,
+    defaultFontFamily: session.defaultFontFamily,
     sampleIntervalMeters: session.sampleIntervalMeters,
     onAdd: session.onAdd,
     onUpdate: session.onUpdate,
@@ -49,6 +57,11 @@ export function Annotate({
     onToolChange: session.onToolChange,
     onSelect: session.onSelect,
     onLabelChange: session.onLabelChange,
+    setSelectedVertexIndex: session.session.setSelectedVertexIndex,
+    undo: session.session.undo,
+    redo: session.session.redo,
+    endEdit: session.session.endEdit,
+    removeSelected: session.session.removeSelected,
   };
 
   const { hoveredId, setHoverId, resolveMap, finishDrawing } = useMapDrawing({
@@ -86,10 +99,12 @@ export function Annotate({
         defaultStrokeWidth={session.defaultStrokeWidth}
         labelsEditable={labelsEditable}
         renderArrowHead={renderArrowHead}
+        renderLabel={renderLabel}
         onSelect={session.onSelect}
         onLabelChange={session.onLabelChange}
         onUpdate={session.onUpdate}
         onHandleDragEnd={(id: string) => {
+          session.session.endEdit();
           setHoverId(id);
         }}
       />

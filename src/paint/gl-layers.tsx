@@ -20,6 +20,7 @@ export function AnnotateLayers({
   defaultStrokeWidth,
   labelsEditable = true,
   renderArrowHead,
+  renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
@@ -33,6 +34,7 @@ export function AnnotateLayers({
   | "defaultStrokeWidth"
   | "labelsEditable"
   | "renderArrowHead"
+  | "renderLabel"
   | "onSelect"
   | "onLabelChange"
   | "onUpdate"
@@ -157,6 +159,7 @@ export function AnnotateLayers({
         color={color}
         labelsEditable={labelsEditable}
         renderArrowHead={renderArrowHead}
+        renderLabel={renderLabel}
         arrows={arrows}
         markers={markers}
         onSelect={onSelect}

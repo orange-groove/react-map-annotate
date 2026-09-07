@@ -26,6 +26,7 @@ export function useMapSession({
     tool: toolProp ?? session.tool,
     selectedId: selectedIdProp ?? session.selectedId,
     defaultColor,
+    defaultFontFamily: session.defaultFontFamily,
     defaultStrokeWidth,
     sampleIntervalMeters,
     onAdd: onAddProp ?? session.onAdd,
