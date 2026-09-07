@@ -238,6 +238,7 @@ describe("draft helpers", () => {
   it("enables finish while a drawing tool is active", () => {
     expect(canPressFinish("select", null)).toBe(false);
     expect(canPressFinish("polygon", null)).toBe(true);
+    expect(canPressFinish("trace", null)).toBe(true);
     expect(
       canPressFinish("select", draft("polygon", [origin, east, north])),
     ).toBe(true);

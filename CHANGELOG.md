@@ -3,6 +3,13 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.6
+
+- Stock toolbar and list icons use Lucide. Trace is Waypoints; the
+  bidirectional arrow is MoveDiagonal.
+- Finish / Enter on Trace no longer saves the hover preview. Click to keep a
+  feature; Finish just leaves the tool.
+
 ## 0.3.5
 
 - Host `trace` callbacks may be async, so Google, Leaflet, and ArcGIS can

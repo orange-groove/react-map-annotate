@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useOptionalAnnotate } from "../session/annotate-context";
 import { DEFAULT_TOOLBAR_TOOLS, TOOL_LABELS } from "../core/constants";
 import type { AnnotateToolbarProps } from "../core/types";
@@ -71,20 +72,7 @@ export function AnnotateToolbar({
           disabled={!canUndo}
           onClick={onUndo}
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M9 14 4 9l5-5" />
-            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11" />
-          </svg>
+          <Undo2 size={18} strokeWidth={1.8} aria-hidden />
         </button>
       ) : null}
       {onRedo ? (
@@ -96,20 +84,7 @@ export function AnnotateToolbar({
           disabled={!canRedo}
           onClick={onRedo}
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="m15 14 5-5-5-5" />
-            <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
-          </svg>
+          <Redo2 size={18} strokeWidth={1.8} aria-hidden />
         </button>
       ) : null}
       <button
@@ -120,20 +95,7 @@ export function AnnotateToolbar({
         disabled={!canFinish}
         onClick={onFinish}
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <circle cx="12" cy="12" r="8.25" />
-          <path d="M8.2 12.2 L10.8 14.8 L16.1 9.3" />
-        </svg>
+        <Check size={18} strokeWidth={1.8} aria-hidden />
       </button>
       {onDeleteSelected ? (
         <button
@@ -144,19 +106,7 @@ export function AnnotateToolbar({
           disabled={!selectedId}
           onClick={onDeleteSelected}
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            aria-hidden
-          >
-            <path d="M5 7 H19" />
-            <path d="M9 7 V5 H15 V7" />
-            <path d="M8 7 L9 19 H15 L16 7" />
-          </svg>
+          <Trash2 size={18} strokeWidth={1.8} aria-hidden />
         </button>
       ) : null}
     </div>

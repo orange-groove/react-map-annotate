@@ -155,7 +155,9 @@ export function useMapDrawing({
   const finishDrawing = React.useCallback(() => {
     const current = latestRef.current.draft;
     dragRef.current = false;
-    if (current) {
+    const discardTrace =
+      isTraceTool(latestRef.current.tool) || current?.kind === "trace";
+    if (current && !discardTrace) {
       const clicked = { ...current, cursor: undefined };
       commitDraft(
         canFinishDraft(clicked)
@@ -230,6 +232,7 @@ export function useMapDrawing({
         onHit(result as TraceHit | null);
       };
       const applyTraceHit = (hit: TraceHit | null) => {
+        if (!isTraceTool(latestRef.current.tool)) return;
         const current = latestRef.current.draft;
         setTracePreview(hit?.coordinates ?? null);
         if (hit) {

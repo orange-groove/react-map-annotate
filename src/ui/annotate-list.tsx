@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2, X } from "lucide-react";
 import { useOptionalAnnotate } from "../session/annotate-context";
 import {
   DEFAULT_COLOR,
@@ -147,19 +148,7 @@ function AnnotationRow({
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => onLabelChange?.(annotation.id, "")}
           >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              aria-hidden
-            >
-              <path d="M3 3 L9 9" />
-              <path d="M9 3 L3 9" />
-            </svg>
+            <X size={12} strokeWidth={1.8} aria-hidden />
           </button>
         ) : null}
       </div>
@@ -171,21 +160,7 @@ function AnnotationRow({
           title="Delete"
           onClick={() => onDelete(annotation.id)}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M5 7 H19" />
-            <path d="M9 7 V5 H15 V7" />
-            <path d="M8 7 L9 19 H15 L16 7" />
-          </svg>
+          <Trash2 size={14} strokeWidth={1.8} aria-hidden />
         </button>
       ) : null}
       {annotation.kind === "text" ? (

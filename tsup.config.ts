@@ -28,5 +28,6 @@ export default defineConfig({
     "leaflet",
     "react-leaflet",
     "@arcgis/core",
+    "lucide-react",
   ],
 });

@@ -1,6 +1,6 @@
 {
   "name": "@orange-groove/react-map-annotate",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Draw on Mapbox, MapLibre, Google Maps, Leaflet, or ArcGIS in React: freehand, arrows, shapes, geodesic measure, and labeled markers — with your React state and your toolbar.",
   "license": "MIT",
   "author": "orange-groove",
@@ -160,5 +160,8 @@
     "haversine",
     "geodesic",
     "geojson"
-  ]
+  ],
+  "dependencies": {
+    "lucide-react": "^1.42.0"
+  }
 }
