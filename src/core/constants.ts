@@ -60,6 +60,7 @@ export const MIN_TEXT_FONT_SIZE = 12;
 export const MAX_TEXT_FONT_SIZE = 160;
 export const SAMPLE_INTERVAL_METERS = 10;
 export const HANDLE_HIT_PX = 20;
+export const DUPLICATE_OFFSET_PX = 32;
 export const MAPBOX_TERRAIN_DEM = "mapbox://mapbox.mapbox-terrain-dem-v1";
 export const EARTH_RADIUS_M = 6_371_000;
 

@@ -1,6 +1,11 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { LngLat } from "../core/types";
-import { clientToLngLat, handleInteraction } from "../core/utils/interaction";
+import {
+  clientToLngLat,
+  handleInteraction,
+  setMapCursor,
+  setPointerCursor,
+} from "../core/utils/interaction";
 import type { MapLike } from "../engines/kit/types";
 
 export interface PointerGrab {
@@ -14,12 +19,15 @@ export function startPointerDrag(
   handle: LngLat,
   onDrag: (point: LngLat, grab: PointerGrab) => void,
   onDragEnd?: () => void,
+  cursor = "grabbing",
 ) {
   event.preventDefault();
   event.stopPropagation();
   event.currentTarget.setPointerCapture?.(event.pointerId);
   const panWasEnabled = map.dragPan.isEnabled();
   map.dragPan.disable();
+  setMapCursor(map, cursor);
+  setPointerCursor(cursor);
   const grab: PointerGrab = {
     from: clientToLngLat(map, event.clientX, event.clientY),
     handle,
@@ -32,6 +40,8 @@ export function startPointerDrag(
     move(next);
     handleInteraction.suppressClickUntil = Date.now() + 400;
     if (panWasEnabled) map.dragPan.enable();
+    setPointerCursor(null);
+    setMapCursor(map, "");
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
     onDragEnd?.();

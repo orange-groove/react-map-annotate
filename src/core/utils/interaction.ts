@@ -1,12 +1,35 @@
 import type { LngLat } from "../types";
 
 export const handleInteraction = { suppressClickUntil: 0 };
+const DRAG_CURSOR_CLASS = "rma-dragging";
+
+export function setMapCursor(
+  map: { getCanvas: () => HTMLElement | null },
+  cursor: string,
+) {
+  const canvas = map.getCanvas();
+  if (!canvas?.style) return;
+  canvas.style.cursor = cursor;
+  const host = canvas.parentElement;
+  if (host?.style) host.style.cursor = cursor;
+}
+
+export function setPointerCursor(cursor: string | null) {
+  const root = document.documentElement;
+  if (!cursor) {
+    root.classList.remove(DRAG_CURSOR_CLASS);
+    root.style.removeProperty("--rma-pointer-cursor");
+    return;
+  }
+  root.style.setProperty("--rma-pointer-cursor", cursor);
+  root.classList.add(DRAG_CURSOR_CLASS);
+}
 
 export function isUiTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest(
-      "[data-rma-label], [data-rma-handle], .mapboxgl-marker, .maplibregl-marker, .leaflet-marker-icon, .rma-overlay-marker, .rma-toolbar, input, textarea",
+      "[data-rma-label], [data-rma-handle], .mapboxgl-marker, .maplibregl-marker, .leaflet-marker-icon, .rma-overlay-marker, .rma-toolbar, .rma-menu, input, textarea",
     ),
   );
 }

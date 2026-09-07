@@ -11,6 +11,7 @@ export function AnnotationLabel({
   selected,
   editable,
   offset,
+  markerAnchor = "bottom",
   onSelect,
   onLabelChange,
   render,
@@ -21,6 +22,7 @@ export function AnnotationLabel({
   selected: boolean;
   editable: boolean;
   offset?: [number, number];
+  markerAnchor?: "center" | "bottom";
   onSelect?: (id: string) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
   render?: (props: LabelRenderProps) => React.ReactNode;
@@ -48,6 +50,14 @@ export function AnnotationLabel({
 
   if (!editing && !annotation.label.trim() && !render) return null;
 
+  const labelClassName = [
+    "rma-label",
+    selected ? "rma-label--selected" : "",
+    markerAnchor === "center" ? "rma-label--centered" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const renderProps: LabelRenderProps = {
     annotation,
     selected,
@@ -65,7 +75,7 @@ export function AnnotationLabel({
     <Marker
       longitude={longitude}
       latitude={latitude}
-      anchor="bottom"
+      anchor={markerAnchor}
       offset={offset}
       style={{ zIndex: selected ? 2 : 1 }}
     >
@@ -82,7 +92,7 @@ export function AnnotationLabel({
       ) : (
         <div
           data-rma-label={annotation.id}
-          className={`rma-label${selected ? " rma-label--selected" : ""}`}
+          className={labelClassName}
           onPointerDown={(event) => {
             event.stopPropagation();
             onSelect?.(annotation.id);

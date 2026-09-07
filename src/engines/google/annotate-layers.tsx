@@ -80,7 +80,7 @@ export function GoogleAnnotateLayers({
             paths={toPath(feature.geometry.coordinates[0] as LngLat[])}
             clickable={false}
             fillColor={featureColor}
-            fillOpacity={Number(feature.properties?.fillOpacity ?? 0.18)}
+            fillOpacity={Number(feature.properties?.fillOpacity ?? 0)}
             strokeColor={featureColor}
             strokeOpacity={skipOutline ? 0 : 1}
             strokeWeight={skipOutline ? 0 : strokeWidth}

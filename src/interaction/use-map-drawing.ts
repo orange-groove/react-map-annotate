@@ -31,9 +31,18 @@ import {
   isUiTarget,
   lastTwoEqual,
   nearFirstVertex,
+  setMapCursor,
+  setPointerCursor,
 } from "../core/utils/interaction";
 import { useMapGl } from "../engines/kit/context";
 import type { MapPointerEvent, MapRef } from "../engines/kit/types";
+import {
+  copySelectedAnnotation,
+  duplicateSelectedAnnotation,
+  resolveAnnotationContextMenu,
+  type AnnotationContextMenuState,
+  pasteAnnotationAtPointer,
+} from "./clipboard-actions";
 import { hitAnnotationId, resolveHandleTarget } from "./hit";
 
 export interface MapDrawingLatest {
@@ -76,6 +85,9 @@ export function useMapDrawing({
     setHoveredId(id);
   }, []);
   const suppressClickRef = React.useRef(false);
+  const lastPointerRef = React.useRef<LngLat | null>(null);
+  const [contextMenu, setContextMenu] =
+    React.useState<AnnotationContextMenuState | null>(null);
   const editRef = React.useRef<{
     id: string;
     start: LngLat;
@@ -109,6 +121,29 @@ export function useMapDrawing({
     },
     [latestRef, resolveMap],
   );
+
+  const copySelected = React.useCallback(() => {
+    return copySelectedAnnotation(
+      latestRef.current,
+      latestRef.current.selectedId ?? hoverIdRef.current,
+    );
+  }, [latestRef]);
+
+  const duplicateSelected = React.useCallback(() => {
+    return duplicateSelectedAnnotation(
+      latestRef.current,
+      resolveMap()?.getMap() ?? null,
+      latestRef.current.selectedId ?? hoverIdRef.current,
+    );
+  }, [latestRef, resolveMap]);
+
+  const pasteAtPointer = React.useCallback(() => {
+    return pasteAnnotationAtPointer(
+      latestRef.current,
+      lastPointerRef.current,
+      resolveMap()?.getMap() ?? null,
+    );
+  }, [latestRef, resolveMap]);
 
   const finishDrawing = React.useCallback(() => {
     const current = latestRef.current.draft;
@@ -156,10 +191,10 @@ export function useMapDrawing({
 
       if (drawing) {
         map.dragPan.disable();
-        map.getCanvas().style.cursor = "crosshair";
+        setMapCursor(map, "crosshair");
       } else {
         map.dragPan.enable();
-        map.getCanvas().style.cursor = "";
+        setMapCursor(map, "");
       }
 
       const onMouseDown = (event: MapPointerEvent) => {
@@ -206,7 +241,8 @@ export function useMapDrawing({
           );
           setHoverId(handleTarget.annotation.id);
           map.dragPan.disable();
-          map.getCanvas().style.cursor = editHandleCursor(handleTarget.handle);
+          setMapCursor(map, editHandleCursor(handleTarget.handle));
+          setPointerCursor(editHandleCursor(handleTarget.handle));
           return;
         }
         if (hitId) {
@@ -221,7 +257,8 @@ export function useMapDrawing({
             latestRef.current.onSelect?.(hitId);
             setHoverId(hitId);
             map.dragPan.disable();
-            map.getCanvas().style.cursor = "grabbing";
+            setMapCursor(map, "grabbing");
+            setPointerCursor("grabbing");
             return;
           }
         }
@@ -237,6 +274,7 @@ export function useMapDrawing({
       const onMouseMove = (event: MapPointerEvent) => {
         const { tool: activeTool, draft: current } = latestRef.current;
         const point = eventLngLat(event);
+        lastPointerRef.current = point;
         const edit = editRef.current;
         if (edit) {
           if (haversineDistance(edit.start, point) > 1) {
@@ -250,12 +288,14 @@ export function useMapDrawing({
                 handleAt: edit.handleAt,
               }),
             );
-            map.getCanvas().style.cursor = editHandleCursor(edit.handle);
+            setMapCursor(map, editHandleCursor(edit.handle));
+            setPointerCursor(editHandleCursor(edit.handle));
           } else {
             latestRef.current.onUpdate?.(
               moveAnnotation(edit.original, edit.start, point),
             );
-            map.getCanvas().style.cursor = "grabbing";
+            setMapCursor(map, "grabbing");
+            setPointerCursor("grabbing");
           }
           return;
         }
@@ -272,15 +312,13 @@ export function useMapDrawing({
           const activeId = handleTarget?.annotation.id ?? nextHover;
           setHoverId(activeId);
           if (handleTarget) {
-            map.getCanvas().style.cursor = editHandleCursor(
-              handleTarget.handle,
-            );
+            setMapCursor(map, editHandleCursor(handleTarget.handle));
           } else if (nextHover) {
-            map.getCanvas().style.cursor = "grab";
+            setMapCursor(map, "grab");
           } else if (isDrawingTool(activeTool)) {
-            map.getCanvas().style.cursor = "crosshair";
+            setMapCursor(map, "crosshair");
           } else {
-            map.getCanvas().style.cursor = "";
+            setMapCursor(map, "");
           }
         }
         if (!isDrawingTool(activeTool)) return;
@@ -319,11 +357,12 @@ export function useMapDrawing({
           editRef.current = null;
           latestRef.current.endEdit?.();
           setHoverId(editedId);
+          setPointerCursor(null);
           if (!isDrawingTool(latestRef.current.tool)) {
             map.dragPan.enable();
-            map.getCanvas().style.cursor = "";
+            setMapCursor(map, "");
           } else {
-            map.getCanvas().style.cursor = "crosshair";
+            setMapCursor(map, "crosshair");
           }
           return;
         }
@@ -450,11 +489,34 @@ export function useMapDrawing({
         }
       };
 
+      const onContextMenu = (event: MouseEvent | MapPointerEvent) => {
+        const mouse =
+          event instanceof MouseEvent
+            ? event
+            : event.originalEvent instanceof MouseEvent
+              ? event.originalEvent
+              : null;
+        if (!mouse) return;
+        const next = resolveAnnotationContextMenu(mouse, {
+          latest: latestRef.current,
+          map,
+        });
+        if (!next) return;
+        lastPointerRef.current = next.lngLat;
+        if (next.annotationId) {
+          latestRef.current.onSelect?.(next.annotationId);
+        }
+        setContextMenu(next);
+      };
+
       map.on("mousedown", onMouseDown);
       map.on("mousemove", onMouseMove);
       map.on("mouseup", onMouseUp);
       map.on("click", onClick);
       map.on("dblclick", onDblClick);
+      map.on("contextmenu", onContextMenu);
+      window.addEventListener("contextmenu", onContextMenu, true);
+      map.getCanvas().addEventListener("contextmenu", onContextMenu, true);
 
       detach = () => {
         try {
@@ -463,10 +525,17 @@ export function useMapDrawing({
           map.off("mouseup", onMouseUp);
           map.off("click", onClick);
           map.off("dblclick", onDblClick);
+          map.off("contextmenu", onContextMenu);
+          window.removeEventListener("contextmenu", onContextMenu, true);
+          map
+            .getCanvas()
+            .removeEventListener("contextmenu", onContextMenu, true);
           map.dragPan.enable();
-          const canvas = map.getCanvas();
-          if (canvas) canvas.style.cursor = "";
+          setPointerCursor(null);
+          setMapCursor(map, "");
         } catch {
+          window.removeEventListener("contextmenu", onContextMenu, true);
+          setPointerCursor(null);
           // Host map can be destroyed before this effect cleans up.
         }
       };
@@ -488,6 +557,11 @@ export function useMapDrawing({
     commitDraft,
     finishDrawing,
     cancelDrawing,
+    copySelected,
+    duplicateSelected,
+    pasteAtPointer,
+    contextMenu,
+    setContextMenu,
     maps: maps as { current?: MapRef | null },
   };
 }

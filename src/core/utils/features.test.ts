@@ -55,6 +55,25 @@ describe("buildAnnotationFeatures", () => {
     expect(kinds).toEqual(["circle", "rectangle", "polygon"]);
   });
 
+  it("keeps area fills transparent until hover", () => {
+    const idle = features.fills.features.map(
+      (feature) => feature.properties?.fillOpacity,
+    );
+    expect(idle).toEqual([0, 0, 0]);
+    const hovered = buildAnnotationFeatures({
+      annotations,
+      hoveredId: "polygon",
+    });
+    const polygon = hovered.fills.features.find(
+      (feature) => feature.properties?.id === "polygon",
+    );
+    const circle = hovered.fills.features.find(
+      (feature) => feature.properties?.id === "circle",
+    );
+    expect(polygon?.properties?.fillOpacity).toBe(0.18);
+    expect(circle?.properties?.fillOpacity).toBe(0);
+  });
+
   it("keeps markers and text out of line and fill sources", () => {
     expect(features.markers.map((marker) => marker.id)).toEqual(["marker"]);
     expect(

@@ -154,7 +154,7 @@ function OverlayPaint({
                 true,
               )}
               fill={String(feature.properties?.color ?? color)}
-              fillOpacity={Number(feature.properties?.fillOpacity ?? 0.18)}
+              fillOpacity={Number(feature.properties?.fillOpacity ?? 0)}
               stroke={
                 skipOutline
                   ? "none"

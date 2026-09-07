@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import type { AnnotateProps } from "../core/types";
+import { peekAnnotationClipboard } from "../core/utils/clipboard";
 import { useMapGl } from "../engines/kit/context";
 import { AnnotateLayers } from "../paint/gl-layers";
+import { AnnotationContextMenu } from "../ui/annotation-context-menu";
 import { useMapDrawing } from "./use-map-drawing";
 import { useMapKeyboard } from "./use-map-keyboard";
 import { useMapSession } from "./use-map-session";
@@ -64,7 +66,17 @@ export function Annotate({
     removeSelected: session.session.removeSelected,
   };
 
-  const { hoveredId, setHoverId, resolveMap, finishDrawing } = useMapDrawing({
+  const {
+    hoveredId,
+    setHoverId,
+    resolveMap,
+    finishDrawing,
+    copySelected,
+    duplicateSelected,
+    pasteAtPointer,
+    contextMenu,
+    setContextMenu,
+  } = useMapDrawing({
     interactive,
     latestRef,
     tool: session.tool,
@@ -79,6 +91,9 @@ export function Annotate({
     interactive,
     latestRef,
     finishDrawing,
+    copySelected,
+    duplicateSelected,
+    pasteAtPointer,
   });
 
   const terrain = useMapTerrain({
@@ -108,6 +123,33 @@ export function Annotate({
           setHoverId(id);
         }}
       />
+      {contextMenu ? (
+        <AnnotationContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          canDuplicate={Boolean(contextMenu.annotationId)}
+          canCopy={Boolean(contextMenu.annotationId)}
+          canPaste={Boolean(peekAnnotationClipboard())}
+          canDelete={Boolean(contextMenu.annotationId)}
+          onDuplicate={() => {
+            duplicateSelected();
+            setContextMenu(null);
+          }}
+          onCopy={() => {
+            copySelected();
+            setContextMenu(null);
+          }}
+          onPaste={() => {
+            void pasteAtPointer();
+            setContextMenu(null);
+          }}
+          onDelete={() => {
+            session.session.removeSelected();
+            setContextMenu(null);
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      ) : null}
     </>
   );
 }

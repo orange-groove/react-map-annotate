@@ -28,6 +28,19 @@ export type { TerrainMap } from "./measure";
 export { createAnnotationId } from "./ids";
 
 export {
+  cloneAnnotation,
+  serializeAnnotationClipboard,
+  parseAnnotationClipboard,
+  writeAnnotationClipboard,
+  peekAnnotationClipboard,
+  readAnnotationClipboard,
+  placeAnnotationAt,
+  offsetAnnotationByPixels,
+  duplicateAnnotationRight,
+  annotationIdFromTarget,
+} from "./clipboard";
+
+export {
   isPathAnnotation,
   isAreaAnnotation,
   isArrowAnnotation,
@@ -101,4 +114,6 @@ export {
   eventLngLat,
   clientToLngLat,
   handleInteraction,
+  setMapCursor,
+  setPointerCursor,
 } from "./interaction";

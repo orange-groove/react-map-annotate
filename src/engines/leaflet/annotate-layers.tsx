@@ -64,7 +64,7 @@ export function LeafletAnnotateLayers({
             pathOptions={{
               color: featureColor,
               fillColor: featureColor,
-              fillOpacity: Number(feature.properties?.fillOpacity ?? 0.18),
+              fillOpacity: Number(feature.properties?.fillOpacity ?? 0),
               weight: skipOutline ? 0 : strokeWidth,
               opacity: skipOutline ? 0 : 1,
             }}

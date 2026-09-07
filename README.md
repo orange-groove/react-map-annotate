@@ -322,7 +322,9 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
   lines, arrows, and measures. Vertices resize polygons and rectangles. A
   diagonal handle resizes circles. Hollow mid-edge handles insert vertices on
   polygons and paths. Double-click a vertex (or select it and press Delete) to
-  remove it. Undo / redo from the toolbar or ⌘Z / ⇧⌘Z.
+  remove it. Undo / redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens
+  Duplicate, Copy, Paste, and Delete. ⌘D / Ctrl+D duplicates the selection to
+  the right. ⌘C / Ctrl+C copies it; ⌘V / Ctrl+V pastes at the pointer.
 
 ```tsx
 <Annotate

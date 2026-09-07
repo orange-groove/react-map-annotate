@@ -125,6 +125,7 @@ function HandleMarker({
         );
       },
       onDragEnd,
+      editHandleCursor(handle),
     );
   }
 

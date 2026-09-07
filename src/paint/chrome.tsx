@@ -6,7 +6,11 @@ import type {
   MarkerAnnotation,
   TextAnnotation,
 } from "../core/types";
-import { isTextAnnotation, labelAnchor } from "../core/utils/annotations";
+import {
+  isAreaAnnotation,
+  isTextAnnotation,
+  labelAnchor,
+} from "../core/utils/annotations";
 import type { ArrowMarker } from "../core/utils/features";
 import { useMapGl } from "../engines/kit/context";
 import { AnnotationLabel } from "./annotation-label";
@@ -119,6 +123,7 @@ export function AnnotateChrome({
         if (isTextAnnotation(annotation)) return null;
         const anchor = labelAnchor(annotation);
         if (!anchor) return null;
+        const centered = isAreaAnnotation(annotation);
         return (
           <AnnotationLabel
             key={`label-${annotation.id}`}
@@ -127,7 +132,14 @@ export function AnnotateChrome({
             latitude={anchor[1]}
             selected={annotation.id === selectedId}
             editable={labelsEditable ?? true}
-            offset={annotation.kind === "marker" ? [0, -56] : [0, -8]}
+            markerAnchor={centered ? "center" : "bottom"}
+            offset={
+              annotation.kind === "marker"
+                ? [0, -56]
+                : centered
+                  ? [0, 0]
+                  : [0, -8]
+            }
             onSelect={onSelect}
             onLabelChange={onLabelChange}
             render={renderLabel}

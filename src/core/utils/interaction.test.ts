@@ -4,6 +4,8 @@ import {
   isUiTarget,
   lastTwoEqual,
   nearFirstVertex,
+  setMapCursor,
+  setPointerCursor,
 } from "./interaction";
 
 describe("eventLngLat", () => {
@@ -50,5 +52,30 @@ describe("nearFirstVertex", () => {
 describe("isUiTarget", () => {
   it("ignores non-elements", () => {
     expect(isUiTarget(null)).toBe(false);
+  });
+});
+
+describe("pointer cursors", () => {
+  it("sets the map canvas and its host", () => {
+    const host = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    host.append(canvas);
+    setMapCursor({ getCanvas: () => canvas }, "grabbing");
+    expect(canvas.style.cursor).toBe("grabbing");
+    expect(host.style.cursor).toBe("grabbing");
+  });
+
+  it("locks the document cursor while dragging", () => {
+    setPointerCursor("grabbing");
+    expect(document.documentElement.classList.contains("rma-dragging")).toBe(
+      true,
+    );
+    expect(
+      document.documentElement.style.getPropertyValue("--rma-pointer-cursor"),
+    ).toBe("grabbing");
+    setPointerCursor(null);
+    expect(document.documentElement.classList.contains("rma-dragging")).toBe(
+      false,
+    );
   });
 });

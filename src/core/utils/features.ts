@@ -229,7 +229,9 @@ export function buildAnnotationFeatures({
           annotation.coordinates,
           selected,
           color,
-          annotation.style?.fillOpacity ?? 0.18,
+          annotation.id === hoveredId
+            ? (annotation.style?.fillOpacity ?? 0.18)
+            : 0,
         ),
       );
     } else if (isMarkerAnnotation(annotation)) {

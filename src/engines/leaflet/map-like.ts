@@ -16,6 +16,7 @@ const POINTER_EVENTS = new Set([
   "mousedown",
   "mousemove",
   "mouseup",
+  "contextmenu",
 ]);
 
 function createLeafletMapLike(map: LeafletMap): MapLike {

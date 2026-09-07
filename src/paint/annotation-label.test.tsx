@@ -74,6 +74,25 @@ describe("AnnotationLabel", () => {
     );
   });
 
+  it("centers the label when markerAnchor is center", () => {
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={annotation}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+          markerAnchor="center"
+        />
+      </TestMapGl>,
+    );
+    expect(
+      screen.getByRole("button", { name: "Route" }).closest(".rma-label")
+        ?.className,
+    ).toContain("rma-label--centered");
+  });
+
   it("renders a custom label", () => {
     render(
       <TestMapGl>
