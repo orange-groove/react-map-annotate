@@ -180,6 +180,11 @@ html.rma-dragging * {
   cursor: var(--rma-pointer-cursor, grabbing) !important;
 }
 
+.rma-crosshair,
+.rma-crosshair * {
+  cursor: crosshair !important;
+}
+
 .rma-label--selected .rma-label-text,
 .rma-label--selected .rma-label-input {
   outline: 2px solid #38bdf8;

@@ -77,6 +77,18 @@ describe("pointer cursors", () => {
     setMapCursor({ getCanvas: () => canvas }, "grabbing");
     expect(canvas.style.cursor).toBe("grabbing");
     expect(host.style.cursor).toBe("grabbing");
+    expect(canvas.classList.contains("rma-crosshair")).toBe(false);
+  });
+
+  it("pins a crosshair class so map pan cannot override it", () => {
+    const host = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    host.append(canvas);
+    setMapCursor({ getCanvas: () => canvas }, "crosshair");
+    expect(canvas.classList.contains("rma-crosshair")).toBe(true);
+    expect(host.classList.contains("rma-crosshair")).toBe(true);
+    setMapCursor({ getCanvas: () => canvas }, "");
+    expect(canvas.classList.contains("rma-crosshair")).toBe(false);
   });
 
   it("locks the document cursor while dragging", () => {

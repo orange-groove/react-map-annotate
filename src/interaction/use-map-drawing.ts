@@ -186,11 +186,13 @@ export function useMapDrawing({
     let cancelled = false;
     let retry: number | undefined;
     let detach: (() => void) | undefined;
+    let attempts = 0;
 
     const attach = () => {
       if (cancelled) return;
       const map = resolveMap()?.getMap();
-      if (!map) {
+      if (!map || (!map.isStyleLoaded() && attempts < 40)) {
+        attempts += 1;
         retry = window.setTimeout(attach, 50);
         return;
       }
@@ -601,7 +603,7 @@ export function useMapDrawing({
       window.addEventListener("contextmenu", onContextMenu, true);
       const canvas = map.getCanvas();
       canvas.addEventListener("contextmenu", onContextMenu, true);
-      canvas.addEventListener("pointermove", onCanvasMove);
+      canvas.addEventListener("pointermove", onCanvasMove, true);
 
       detach = () => {
         try {
@@ -612,7 +614,7 @@ export function useMapDrawing({
           map.off("dblclick", onDblClick);
           map.off("contextmenu", onContextMenu);
           window.removeEventListener("contextmenu", onContextMenu, true);
-          canvas.removeEventListener("pointermove", onCanvasMove);
+          canvas.removeEventListener("pointermove", onCanvasMove, true);
           map
             .getCanvas()
             .removeEventListener("contextmenu", onContextMenu, true);

@@ -3,6 +3,11 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.4
+
+- Google Trace hover is immediate and works on the first visit. Overlay
+  attach waits until the map is idle, and pointermove drives recognition.
+
 ## 0.3.3
 
 - Trace tool: hover a rendered road or building outline, click to keep it.

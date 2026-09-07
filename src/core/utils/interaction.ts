@@ -3,6 +3,8 @@ import type { LngLat } from "../types";
 export const handleInteraction = { suppressClickUntil: 0 };
 const DRAG_CURSOR_CLASS = "rma-dragging";
 
+const CROSSHAIR_CLASS = "rma-crosshair";
+
 export function setMapCursor(
   map: { getCanvas: () => HTMLElement | null },
   cursor: string,
@@ -12,6 +14,9 @@ export function setMapCursor(
   canvas.style.cursor = cursor;
   const host = canvas.parentElement;
   if (host?.style) host.style.cursor = cursor;
+  const crosshair = cursor === "crosshair";
+  canvas.classList.toggle(CROSSHAIR_CLASS, crosshair);
+  host?.classList.toggle(CROSSHAIR_CLASS, crosshair);
 }
 
 export function setPointerCursor(cursor: string | null) {
