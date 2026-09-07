@@ -47,10 +47,7 @@ export function CustomList() {
                 }
               >
                 {fontOptions.map((option) => (
-                  <option
-                    key={option.family || "system"}
-                    value={option.family}
-                  >
+                  <option key={option.family || "system"} value={option.family}>
                     {option.label ?? option.family}
                   </option>
                 ))}

@@ -1,0 +1,57 @@
+name: Bug report
+description: Something in the drawing session, paint adapters, or hooks is broken.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. The fields below keep the first response from being a guessing round.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package version
+      options:
+        - "0.3.x"
+        - "0.2.x"
+        - main / git
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Map engine
+      options:
+        - Mapbox
+        - MapLibre
+        - Google
+        - Leaflet
+        - ArcGIS
+        - not sure / session only
+    validations:
+      required: true
+  - type: input
+    id: peers
+    attributes:
+      label: Peer versions
+      description: React, plus the map library you render (for example react-map-gl 8.1 and mapbox-gl 3.29).
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: A minimal snippet or a link. Headless `setTool` / `finish` cases are especially useful.
+      render: tsx
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, console errors, or whether this only happens with terrain, text, or custom chrome.

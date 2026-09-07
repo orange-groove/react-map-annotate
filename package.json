@@ -8,7 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/orange-groove/react-map-annotate.git"
   },
-  "homepage": "https://github.com/orange-groove/react-map-annotate#readme",
+  "homepage": "https://react-map-annotate-demo.onrender.com/",
   "bugs": {
     "url": "https://github.com/orange-groove/react-map-annotate/issues"
   },

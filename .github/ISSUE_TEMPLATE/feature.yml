@@ -1,0 +1,35 @@
+name: Feature request
+description: Propose an API, tool, or engine change.
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Features that keep the session headless (your UI, your `Annotation[]`) are the easiest to take.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to ship that the current session or adapters do not cover?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The API you want, if you have one. `setTool`, `finish`, `onChange`, and `Annotation` are the contract we try not to break.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Session / hooks
+        - Custom toolbar or list
+        - Editing (vertices, undo)
+        - Measurement / terrain
+        - Text / fonts
+        - Map engine adapter
+        - Docs / examples
+        - Other
+    validations:
+      required: true
