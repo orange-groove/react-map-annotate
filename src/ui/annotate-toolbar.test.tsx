@@ -12,10 +12,11 @@ describe("AnnotateToolbar", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Select" })).toBeNull();
     expect(screen.getByRole("button", { name: "Freehand" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Trace" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Line" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Arrow" })).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Bidirectional arrow" }),
+      screen.getByRole("button", { name: "Bidirectional Arrow" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Circle" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Rectangle" })).toBeTruthy();
@@ -24,7 +25,7 @@ describe("AnnotateToolbar", () => {
     expect(screen.getByRole("button", { name: "Marker" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Text" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Finish drawing" })).toBeTruthy();
-    expect(DEFAULT_TOOLBAR_TOOLS).toHaveLength(10);
+    expect(DEFAULT_TOOLBAR_TOOLS).toHaveLength(11);
   });
 
   it("notifies the host when a tool is chosen", async () => {

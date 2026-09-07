@@ -15,12 +15,15 @@ export function LeafletAnnotateLayers({
   defaultColor,
   defaultStrokeWidth,
   labelsEditable = true,
+  showLabels = true,
+  showArea = true,
   renderArrowHead,
   renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
   onHandleDragEnd,
+  tracePreview = null,
 }: Pick<
   AnnotateProps,
   | "annotations"
@@ -29,6 +32,8 @@ export function LeafletAnnotateLayers({
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
+  | "showLabels"
+  | "showArea"
   | "renderArrowHead"
   | "renderLabel"
   | "onSelect"
@@ -36,6 +41,7 @@ export function LeafletAnnotateLayers({
   | "onUpdate"
 > & {
   hoveredId?: string | null;
+  tracePreview?: LngLat[] | null;
   onHandleDragEnd?: (id: string) => void;
 }) {
   const color = defaultColor ?? DEFAULT_COLOR;
@@ -72,6 +78,28 @@ export function LeafletAnnotateLayers({
         );
       })}
 
+      {tracePreview && tracePreview.length >= 2 ? (
+        <Polyline
+          positions={toLatLngs(tracePreview)}
+          interactive={false}
+          pathOptions={{
+            color,
+            weight: strokeWidth + 8,
+            opacity: 0.22,
+          }}
+        />
+      ) : null}
+      {tracePreview && tracePreview.length >= 2 ? (
+        <Polyline
+          positions={toLatLngs(tracePreview)}
+          interactive={false}
+          pathOptions={{
+            color,
+            weight: strokeWidth + 2,
+            opacity: 0.95,
+          }}
+        />
+      ) : null}
       {lines.features.map((feature, index) => (
         <Polyline
           key={`line-${index}`}
@@ -126,6 +154,8 @@ export function LeafletAnnotateLayers({
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}
+        showLabels={showLabels}
+        showArea={showArea}
         renderArrowHead={renderArrowHead}
         renderLabel={renderLabel}
         arrows={arrows}

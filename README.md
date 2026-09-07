@@ -312,6 +312,9 @@ item.setStyle({ fontFamily: fonts[1]?.family });
 
 Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 
+- **Trace** — hover a road or building outline to highlight it. Click to
+  keep that feature. Move the finished shape by its bounds box; it has no
+  vertex handles.
 - **Freehand, circle, rectangle** — complete on mouse up.
 - **Line, arrow, bidirectional arrow, measure** — complete on the second click.
 - **Polygon** — click vertices, then Finish.
@@ -355,6 +358,7 @@ enabled, each sample records ground height.
 | Tool                  | What it does                                                                                                                       |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Freehand              | Sketch a path. Hover for a bounds box; drag to move.                                                                               |
+| Trace                 | Hover a rendered road or building outline, click to adopt it. No freehand, no per-vertex handles.                                  |
 | Line                  | Two-click segment. Hover ends to resize.                                                                                           |
 | Arrow / bidirectional | Line plus SVG heads. Size from the list, or `setStyle({ strokeWidth })` — widens the shaft and the heads.                          |
 | Circle                | Drag to create. Hover for a resize handle.                                                                                         |
@@ -364,6 +368,10 @@ enabled, each sample records ground height.
 | Marker                | Labeled map pin. Drag the pin to move it.                                                                                          |
 | Text                  | Click to place. Drag to move, corner to resize. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
 | Finish                | Commit the draft (same as Enter).                                                                                                  |
+
+On Mapbox and MapLibre, Trace queries rendered road and building layers.
+Google, Leaflet, and ArcGIS need a `trace` callback that returns
+`{ coordinates }`. `trace={false}` turns it off.
 
 ## API snapshot
 

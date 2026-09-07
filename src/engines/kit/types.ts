@@ -1,6 +1,7 @@
 import type { ComponentType, CSSProperties, ReactNode } from "react";
 import type {
   AnnotateProps,
+  LngLat,
   MapEngine,
   MapLngLat,
   MapPoint,
@@ -16,6 +17,8 @@ export type GlAnnotateLayersProps = Pick<
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
+  | "showLabels"
+  | "showArea"
   | "renderArrowHead"
   | "renderLabel"
   | "onSelect"
@@ -23,6 +26,7 @@ export type GlAnnotateLayersProps = Pick<
   | "onUpdate"
 > & {
   hoveredId?: string | null;
+  tracePreview?: LngLat[] | null;
   onHandleDragEnd?: (id: string) => void;
 };
 
@@ -33,9 +37,28 @@ export interface MapLike {
   getLayer: (id: string) => unknown;
   getSource: (id: string) => unknown;
   queryRenderedFeatures: (
-    point: MapPoint,
+    geometry?:
+      | MapPoint
+      | [number, number]
+      | [MapPoint | [number, number], MapPoint | [number, number]],
     options?: { layers?: string[] },
-  ) => Array<{ properties?: { id?: unknown } }>;
+  ) => Array<{
+    properties?: { id?: unknown };
+    geometry?: GeoJSON.Geometry;
+    layer?: { id?: string; type?: string };
+    sourceLayer?: string;
+    source?: string;
+  }>;
+  querySourceFeatures?: (
+    source: string,
+    options?: { sourceLayer?: string },
+  ) => Array<{
+    properties?: { id?: unknown };
+    geometry?: GeoJSON.Geometry;
+    layer?: { id?: string; type?: string };
+    sourceLayer?: string;
+  }>;
+  getStyle?: () => { layers?: Array<{ id: string; type: string }> };
   queryTerrainElevation?: (
     lngLat: MapLngLat,
     options?: { exaggerated?: boolean },

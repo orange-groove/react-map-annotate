@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useMapGl } from "../engines/kit/context";
 import type { Annotation, LabelRenderProps } from "../core/types";
+import { annotationAreaMeters } from "../core/utils/annotations";
+import { formatArea } from "../core/utils/geo";
 
 export function AnnotationLabel({
   annotation,
@@ -12,6 +14,8 @@ export function AnnotationLabel({
   editable,
   offset,
   markerAnchor = "bottom",
+  showLabel = true,
+  showArea = true,
   onSelect,
   onLabelChange,
   render,
@@ -23,6 +27,8 @@ export function AnnotationLabel({
   editable: boolean;
   offset?: [number, number];
   markerAnchor?: "center" | "bottom";
+  showLabel?: boolean;
+  showArea?: boolean;
   onSelect?: (id: string) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
   render?: (props: LabelRenderProps) => React.ReactNode;
@@ -48,7 +54,12 @@ export function AnnotationLabel({
     }
   }
 
-  if (!editing && !annotation.label.trim() && !render) return null;
+  const areaMeters = annotationAreaMeters(annotation);
+  const areaLabel =
+    showArea && areaMeters != null ? formatArea(areaMeters) : null;
+  const name = showLabel ? annotation.label.trim() : "";
+
+  if (!editing && !name && !render && !areaLabel) return null;
 
   const labelClassName = [
     "rma-label",
@@ -65,6 +76,9 @@ export function AnnotationLabel({
     longitude,
     latitude,
     offset,
+    areaLabel,
+    showLabel,
+    showArea,
     onSelect,
     onLabelChange,
   };
@@ -120,7 +134,7 @@ export function AnnotationLabel({
                 }
               }}
             />
-          ) : (
+          ) : name ? (
             <button
               type="button"
               className="rma-label-text"
@@ -131,7 +145,8 @@ export function AnnotationLabel({
             >
               {annotation.label}
             </button>
-          )}
+          ) : null}
+          {areaLabel ? <div className="rma-label-area">{areaLabel}</div> : null}
         </div>
       )}
     </Marker>

@@ -22,6 +22,7 @@ import {
   haversineDistance,
   pathMidpoint,
   rectangleRing,
+  ringArea,
   ringCentroid,
 } from "./geo";
 import { createAnnotationId } from "./ids";
@@ -37,6 +38,7 @@ export function isPathAnnotation(
 ): annotation is PathAnnotation {
   return (
     annotation.kind === "draw" ||
+    annotation.kind === "trace" ||
     annotation.kind === "line" ||
     annotation.kind === "arrow" ||
     annotation.kind === "bidirectional-arrow" ||
@@ -60,6 +62,19 @@ export function isAreaAnnotation(
     annotation.kind === "rectangle" ||
     annotation.kind === "circle"
   );
+}
+
+export function annotationAreaMeters(annotation: Annotation): number | null {
+  if (!isAreaAnnotation(annotation)) return null;
+  if (
+    annotation.kind === "circle" &&
+    annotation.radiusMeters &&
+    annotation.radiusMeters > 0
+  ) {
+    return Math.PI * annotation.radiusMeters * annotation.radiusMeters;
+  }
+  const area = ringArea(annotation.coordinates);
+  return area > 0 ? area : null;
 }
 
 export function isMarkerAnnotation(
@@ -193,6 +208,7 @@ export function removeAnnotation(
 function pathKind(kind: AnnotationKind): kind is PathAnnotation["kind"] {
   return (
     kind === "draw" ||
+    kind === "trace" ||
     kind === "line" ||
     kind === "arrow" ||
     kind === "bidirectional-arrow" ||

@@ -7,6 +7,7 @@ import {
   isDragTool,
   isDrawingTool,
   isPointTool,
+  isTraceTool,
 } from "./constants";
 
 describe("tool helpers", () => {
@@ -14,12 +15,16 @@ describe("tool helpers", () => {
     expect(isDrawingTool("select")).toBe(false);
     expect(isDrawingTool(undefined)).toBe(false);
     expect(isDrawingTool("line")).toBe(true);
+    expect(isDrawingTool("trace")).toBe(true);
     expect(isDrawingTool("marker")).toBe(true);
     expect(isDrawingTool("text")).toBe(true);
+    expect(isTraceTool("trace")).toBe(true);
+    expect(isTraceTool("line")).toBe(false);
   });
 
   it("classifies drag and click-vertex tools", () => {
     expect(isDragTool("draw")).toBe(true);
+    expect(isDragTool("trace")).toBe(false);
     expect(isDragTool("circle")).toBe(true);
     expect(isDragTool("rectangle")).toBe(true);
     expect(isDragTool("line")).toBe(false);

@@ -178,6 +178,12 @@ describe("path endpoints", () => {
       origin,
       east,
     ]);
+    expect(canInsertVertices({ ...line, id: "trace", kind: "trace" })).toBe(
+      false,
+    );
+    expect(editableVertices({ ...line, id: "trace", kind: "trace" })).toEqual(
+      [],
+    );
     expect(
       editableVertices({
         ...line,

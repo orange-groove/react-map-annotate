@@ -19,6 +19,7 @@ import type {
   AnnotationStyle,
   AnnotateTool,
   DraftAnnotation,
+  TraceOption,
 } from "../core/types";
 import {
   canPressFinish,
@@ -70,6 +71,9 @@ export interface AnnotateSession {
   canUndo: boolean;
   canRedo: boolean;
   removeSelected: () => void;
+  showLabels: boolean;
+  showArea: boolean;
+  trace?: TraceOption;
 }
 
 export interface AnnotateProviderProps extends AnnotateCallbacks {
@@ -83,6 +87,9 @@ export interface AnnotateProviderProps extends AnnotateCallbacks {
   onChange?: (annotations: Annotation[]) => void;
   fonts?: AnnotateFont[];
   defaultFontFamily?: string;
+  showLabels?: boolean;
+  showArea?: boolean;
+  trace?: TraceOption;
 }
 
 const AnnotateContext = createContext<AnnotateSession | null>(null);
@@ -106,6 +113,9 @@ export function AnnotateProvider({
   onColorChange: onColorChangeProp,
   fonts: fontsProp,
   defaultFontFamily,
+  showLabels = true,
+  showArea = true,
+  trace,
 }: AnnotateProviderProps) {
   const [annotationsState, setAnnotationsState] = useState<Annotation[]>(
     () => annotationsProp ?? initialAnnotations,
@@ -439,6 +449,9 @@ export function AnnotateProvider({
       canUndo,
       canRedo,
       removeSelected,
+      showLabels,
+      showArea,
+      trace,
     }),
     [
       annotations,
@@ -467,6 +480,9 @@ export function AnnotateProvider({
       setSelectedId,
       setSelectedVertexIndex,
       setTool,
+      showArea,
+      showLabels,
+      trace,
       tool,
       undo,
     ],

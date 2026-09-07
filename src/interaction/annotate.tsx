@@ -43,6 +43,7 @@ export function Annotate({
     redo: session.session.redo,
     endEdit: session.session.endEdit,
     removeSelected: session.session.removeSelected,
+    trace: session.trace,
   });
   latestRef.current = {
     annotations: session.annotations,
@@ -64,6 +65,7 @@ export function Annotate({
     redo: session.session.redo,
     endEdit: session.session.endEdit,
     removeSelected: session.session.removeSelected,
+    trace: session.trace,
   };
 
   const {
@@ -76,6 +78,7 @@ export function Annotate({
     pasteAtPointer,
     contextMenu,
     setContextMenu,
+    tracePreview,
   } = useMapDrawing({
     interactive,
     latestRef,
@@ -113,6 +116,9 @@ export function Annotate({
         defaultColor={session.defaultColor}
         defaultStrokeWidth={session.defaultStrokeWidth}
         labelsEditable={labelsEditable}
+        showLabels={session.showLabels}
+        showArea={session.showArea}
+        tracePreview={tracePreview}
         renderArrowHead={renderArrowHead}
         renderLabel={renderLabel}
         onSelect={session.onSelect}

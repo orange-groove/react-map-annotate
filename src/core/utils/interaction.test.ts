@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventLngLat,
+  eventPoint,
   isUiTarget,
   lastTwoEqual,
   nearFirstVertex,
@@ -13,6 +14,19 @@ describe("eventLngLat", () => {
     expect(eventLngLat({ lngLat: { lng: -73.9, lat: 40.7 } })).toEqual([
       -73.9, 40.7,
     ]);
+  });
+});
+
+describe("eventPoint", () => {
+  it("reads a screen point or projects lng/lat", () => {
+    expect(eventPoint({ point: { x: 12, y: 8 } })).toEqual({ x: 12, y: 8 });
+    expect(
+      eventPoint(
+        {},
+        { project: ({ lng, lat }) => ({ x: lng, y: lat }) },
+        { lng: 4, lat: 5 },
+      ),
+    ).toEqual({ x: 4, y: 5 });
   });
 });
 

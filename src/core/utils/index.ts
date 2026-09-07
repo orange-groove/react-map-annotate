@@ -14,7 +14,9 @@ export {
   boundsRing,
   ringCentroid,
   pathMidpoint,
+  ringArea,
   formatDistance,
+  formatArea,
   formatElevationDelta,
 } from "./geo";
 
@@ -43,6 +45,7 @@ export {
 export {
   isPathAnnotation,
   isAreaAnnotation,
+  annotationAreaMeters,
   isArrowAnnotation,
   isMarkerAnnotation,
   isTextAnnotation,
@@ -100,6 +103,15 @@ export type { ArrowMarker, AnnotationFeatures } from "./features";
 export { hitTestAnnotations, distanceToSegment, pointInRing } from "./hit-test";
 
 export {
+  listTraceLayers,
+  traceRenderedRoads,
+  resolveTrace,
+  stitchTrace,
+  sameTracePath,
+  asTraceFn,
+} from "./trace";
+
+export {
   resolveAnnotateFonts,
   fontPickerOptions,
   fontStylesheetHrefs,
@@ -112,6 +124,7 @@ export {
   lastTwoEqual,
   nearFirstVertex,
   eventLngLat,
+  eventPoint,
   clientToLngLat,
   handleInteraction,
   setMapCursor,

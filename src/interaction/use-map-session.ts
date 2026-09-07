@@ -17,6 +17,9 @@ export function useMapSession({
   onToolChange: onToolChangeProp,
   onSelect: onSelectProp,
   onLabelChange: onLabelChangeProp,
+  showLabels: showLabelsProp,
+  showArea: showAreaProp,
+  trace: traceProp,
 }: AnnotateProps) {
   const session = useAnnotate();
   return {
@@ -36,5 +39,8 @@ export function useMapSession({
     onToolChange: onToolChangeProp ?? session.onToolChange,
     onSelect: onSelectProp ?? session.onSelect,
     onLabelChange: onLabelChangeProp ?? session.onLabelChange,
+    showLabels: showLabelsProp ?? session.showLabels,
+    showArea: showAreaProp ?? session.showArea,
+    trace: traceProp !== undefined ? traceProp : session.trace,
   };
 }

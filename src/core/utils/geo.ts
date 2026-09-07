@@ -211,11 +211,35 @@ export function pathMidpoint(coordinates: LngLat[]): LngLat {
   return coordinates[coordinates.length - 1];
 }
 
+export function ringArea(coordinates: LngLat[]): number {
+  const pts = openRing(coordinates);
+  if (pts.length < 3) return 0;
+  let total = 0;
+  for (let index = 0; index < pts.length; index += 1) {
+    const a = pts[index];
+    const b = pts[(index + 1) % pts.length];
+    total +=
+      (b[0] - a[0]) *
+      TO_RAD *
+      (2 + Math.sin(a[1] * TO_RAD) + Math.sin(b[1] * TO_RAD));
+  }
+  return Math.abs((total * EARTH_RADIUS_M * EARTH_RADIUS_M) / 2);
+}
+
 export function formatDistance(meters: number): string {
   if (!Number.isFinite(meters)) return "0 m";
   if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
   if (meters >= 10) return `${Math.round(meters)} m`;
   return `${meters.toFixed(1)} m`;
+}
+
+export function formatArea(squareMeters: number): string {
+  if (!Number.isFinite(squareMeters)) return "0 m²";
+  if (squareMeters >= 1_000_000) {
+    return `${(squareMeters / 1_000_000).toFixed(2)} km²`;
+  }
+  if (squareMeters >= 10) return `${Math.round(squareMeters)} m²`;
+  return `${squareMeters.toFixed(1)} m²`;
 }
 
 export function formatElevationDelta(meters: number): string {

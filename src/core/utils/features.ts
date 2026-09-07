@@ -204,7 +204,10 @@ export function buildAnnotationFeatures({
         ),
       );
       arrows.push(...arrowsFor(annotation, color, selected, strokeWidth));
-      if (annotation.kind === "draw" && annotation.id === hoveredId) {
+      if (
+        (annotation.kind === "draw" || annotation.kind === "trace") &&
+        annotation.id === hoveredId
+      ) {
         const box = drawBoundsRing(annotation);
         if (box.length >= 4) {
           boundsFeatures.push(
@@ -243,6 +246,7 @@ export function buildAnnotationFeatures({
     const coords = previewCoordinates(draft);
     if (
       draft.kind === "draw" ||
+      draft.kind === "trace" ||
       draft.kind === "line" ||
       draft.kind === "arrow" ||
       draft.kind === "bidirectional-arrow" ||

@@ -7,6 +7,7 @@ import {
   openRing,
   densifyPath,
   destination,
+  formatArea,
   formatDistance,
   formatElevationDelta,
   haversineDistance,
@@ -15,6 +16,7 @@ import {
   pathLength,
   pathMidpoint,
   rectangleRing,
+  ringArea,
   ringCentroid,
 } from "./geo";
 
@@ -183,6 +185,33 @@ describe("pathMidpoint", () => {
 
   it("returns the only point for a single-vertex path", () => {
     expect(pathMidpoint([[5, 6]])).toEqual([5, 6]);
+  });
+});
+
+describe("ringArea", () => {
+  it("measures a 100 m square near the equator", () => {
+    const sw: [number, number] = [0, 0];
+    const se = destination(sw, 90, 100);
+    const ne = destination(se, 0, 100);
+    expect(ringArea(rectangleRing(sw, ne))).toBeCloseTo(10_000, -2);
+  });
+
+  it("is zero for an incomplete ring", () => {
+    expect(
+      ringArea([
+        [0, 0],
+        [1, 0],
+      ]),
+    ).toBe(0);
+  });
+});
+
+describe("formatArea", () => {
+  it("switches to square kilometers above 1 km²", () => {
+    expect(formatArea(20)).toBe("20 m²");
+    expect(formatArea(4.2)).toBe("4.2 m²");
+    expect(formatArea(1_500_000)).toBe("1.50 km²");
+    expect(formatArea(Number.NaN)).toBe("0 m²");
   });
 });
 

@@ -7,7 +7,7 @@ import {
   SOURCE_IDS,
 } from "../core/constants";
 import { useMapGl } from "../engines/kit/context";
-import type { AnnotateProps } from "../core/types";
+import type { AnnotateProps, LngLat } from "../core/types";
 import { buildAnnotationFeatures } from "../core/utils/features";
 import { AnnotateChrome } from "./chrome";
 
@@ -19,12 +19,15 @@ export function AnnotateLayers({
   defaultColor,
   defaultStrokeWidth,
   labelsEditable = true,
+  showLabels = true,
+  showArea = true,
   renderArrowHead,
   renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
   onHandleDragEnd,
+  tracePreview = null,
 }: Pick<
   AnnotateProps,
   | "annotations"
@@ -33,6 +36,8 @@ export function AnnotateLayers({
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
+  | "showLabels"
+  | "showArea"
   | "renderArrowHead"
   | "renderLabel"
   | "onSelect"
@@ -40,6 +45,7 @@ export function AnnotateLayers({
   | "onUpdate"
 > & {
   hoveredId?: string | null;
+  tracePreview?: LngLat[] | null;
   onHandleDragEnd?: (id: string) => void;
 }) {
   const { Source, Layer } = useMapGl();
@@ -138,6 +144,45 @@ export function AnnotateLayers({
         />
       </Source>
 
+      <Source
+        id={SOURCE_IDS.trace}
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features:
+            tracePreview && tracePreview.length >= 2
+              ? [
+                  {
+                    type: "Feature",
+                    properties: {},
+                    geometry: { type: "LineString", coordinates: tracePreview },
+                  },
+                ]
+              : [],
+        }}
+      >
+        <Layer
+          id={LAYER_IDS.traceHalo}
+          type="line"
+          layout={{ "line-cap": "round", "line-join": "round" }}
+          paint={{
+            "line-color": color,
+            "line-width": strokeWidth + 12,
+            "line-opacity": 0.35,
+          }}
+        />
+        <Layer
+          id={LAYER_IDS.trace}
+          type="line"
+          layout={{ "line-cap": "round", "line-join": "round" }}
+          paint={{
+            "line-color": color,
+            "line-width": strokeWidth + 2,
+            "line-opacity": 0.95,
+          }}
+        />
+      </Source>
+
       <Source id={SOURCE_IDS.samples} type="geojson" data={samples}>
         <Layer
           id={LAYER_IDS.samples}
@@ -158,6 +203,8 @@ export function AnnotateLayers({
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}
+        showLabels={showLabels}
+        showArea={showArea}
         renderArrowHead={renderArrowHead}
         renderLabel={renderLabel}
         arrows={arrows}

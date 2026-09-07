@@ -4,12 +4,14 @@ import {
   isDragTool,
   isDrawingTool,
   isPointTool,
+  isTraceTool,
 } from "../core/constants";
 import type {
   AnnotateTool,
   Annotation,
   DraftAnnotation,
   LngLat,
+  TraceOption,
 } from "../core/types";
 import {
   annotationFromDraft,
@@ -43,6 +45,7 @@ import {
   type AnnotationContextMenuState,
   pasteAnnotationAtPointer,
 } from "./clipboard-actions";
+import { resolveTrace, sameTracePath } from "../core/utils/trace";
 import { hitAnnotationId, resolveHandleTarget } from "./hit";
 
 export interface MapDrawingLatest {
@@ -64,6 +67,7 @@ export interface MapDrawingLatest {
   redo?: () => void;
   endEdit?: () => void;
   removeSelected?: () => void;
+  trace?: TraceOption;
 }
 
 export function useMapDrawing({
@@ -86,6 +90,7 @@ export function useMapDrawing({
   }, []);
   const suppressClickRef = React.useRef(false);
   const lastPointerRef = React.useRef<LngLat | null>(null);
+  const [tracePreview, setTracePreview] = React.useState<LngLat[] | null>(null);
   const [contextMenu, setContextMenu] =
     React.useState<AnnotationContextMenuState | null>(null);
   const editRef = React.useRef<{
@@ -114,6 +119,7 @@ export function useMapDrawing({
         : null;
       latestRef.current.draft = null;
       latestRef.current.onDraftChange?.(null);
+      setTracePreview(null);
       if (annotation) {
         latestRef.current.onAdd?.(annotation);
         latestRef.current.onSelect?.(annotation.id);
@@ -162,6 +168,7 @@ export function useMapDrawing({
     } else {
       latestRef.current.draft = null;
       latestRef.current.onDraftChange?.(null);
+      setTracePreview(null);
     }
     latestRef.current.onToolChange?.("select");
   }, [commitDraft, latestRef]);
@@ -171,6 +178,7 @@ export function useMapDrawing({
     editRef.current = null;
     latestRef.current.draft = null;
     latestRef.current.onDraftChange?.(null);
+    setTracePreview(null);
   }, [latestRef]);
 
   React.useEffect(() => {
@@ -187,15 +195,47 @@ export function useMapDrawing({
         return;
       }
 
-      const drawing = isDrawingTool(latestRef.current.tool);
+      const drawing =
+        isDrawingTool(latestRef.current.tool) &&
+        !isTraceTool(latestRef.current.tool);
 
       if (drawing) {
         map.dragPan.disable();
+        setMapCursor(map, "crosshair");
+      } else if (isTraceTool(latestRef.current.tool)) {
+        map.dragPan.enable();
         setMapCursor(map, "crosshair");
       } else {
         map.dragPan.enable();
         setMapCursor(map, "");
       }
+
+      const pushDraft = (next: DraftAnnotation | null) => {
+        latestRef.current.draft = next;
+        latestRef.current.onDraftChange?.(next);
+      };
+
+      const hoverTrace = (point: LngLat, screen: { x: number; y: number }) => {
+        const current = latestRef.current.draft;
+        const hit = resolveTrace(latestRef.current.trace, point, {
+          map,
+          point: screen,
+          phase: "hover",
+        });
+        setTracePreview(hit?.coordinates ?? null);
+        if (hit) {
+          if (
+            !current ||
+            current.kind !== "trace" ||
+            !sameTracePath(current.coordinates, hit.coordinates)
+          ) {
+            pushDraft({ kind: "trace", coordinates: hit.coordinates });
+          }
+        } else if (current?.kind === "trace") {
+          pushDraft(null);
+        }
+        setMapCursor(map, "crosshair");
+      };
 
       const onMouseDown = (event: MapPointerEvent) => {
         if (event.originalEvent.button !== 0) return;
@@ -262,12 +302,14 @@ export function useMapDrawing({
             return;
           }
         }
+        if (isTraceTool(activeTool)) return;
         if (!isDrawingTool(activeTool) || !isDragTool(activeTool)) return;
         dragRef.current = true;
-        latestRef.current.onDraftChange?.({
+        const start = eventLngLat(event);
+        pushDraft({
           kind: activeTool,
-          coordinates: [eventLngLat(event)],
-          cursor: eventLngLat(event),
+          coordinates: [start],
+          cursor: start,
         });
       };
 
@@ -297,6 +339,10 @@ export function useMapDrawing({
             setMapCursor(map, "grabbing");
             setPointerCursor("grabbing");
           }
+          return;
+        }
+        if (isTraceTool(activeTool)) {
+          hoverTrace(point, event.point);
           return;
         }
         if (!current) {
@@ -329,7 +375,7 @@ export function useMapDrawing({
             last && haversineDistance(last, point) < 2
               ? current.coordinates
               : [...current.coordinates, point];
-          latestRef.current.onDraftChange?.({
+          pushDraft({
             ...current,
             coordinates: nextCoordinates,
             cursor: point,
@@ -399,6 +445,31 @@ export function useMapDrawing({
           annotations: items,
         } = latestRef.current;
         const point = eventLngLat(event);
+        if (isTraceTool(activeTool)) {
+          const existing = current
+            ? null
+            : hitAnnotationId(map, event.point, items);
+          if (existing) {
+            latestRef.current.onSelect?.(existing);
+            return;
+          }
+          const draft = latestRef.current.draft;
+          if (draft?.kind === "trace" && draft.coordinates.length >= 2) {
+            setTracePreview(null);
+            commitDraft(draft);
+            return;
+          }
+          const hit = resolveTrace(latestRef.current.trace, point, {
+            map,
+            point: event.point,
+            phase: "draw",
+          });
+          if (hit) {
+            setTracePreview(null);
+            commitDraft({ kind: "trace", coordinates: hit.coordinates });
+          }
+          return;
+        }
         const hitId = current ? null : hitAnnotationId(map, event.point, items);
 
         if (hitId) {
@@ -509,6 +580,18 @@ export function useMapDrawing({
         setContextMenu(next);
       };
 
+      const onCanvasMove = (event: PointerEvent) => {
+        if (!isTraceTool(latestRef.current.tool)) return;
+        const canvas = map.getCanvas();
+        const rect = canvas.getBoundingClientRect();
+        const screen = {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        };
+        const lngLat = map.unproject([screen.x, screen.y]);
+        hoverTrace([lngLat.lng, lngLat.lat], screen);
+      };
+
       map.on("mousedown", onMouseDown);
       map.on("mousemove", onMouseMove);
       map.on("mouseup", onMouseUp);
@@ -516,7 +599,9 @@ export function useMapDrawing({
       map.on("dblclick", onDblClick);
       map.on("contextmenu", onContextMenu);
       window.addEventListener("contextmenu", onContextMenu, true);
-      map.getCanvas().addEventListener("contextmenu", onContextMenu, true);
+      const canvas = map.getCanvas();
+      canvas.addEventListener("contextmenu", onContextMenu, true);
+      canvas.addEventListener("pointermove", onCanvasMove);
 
       detach = () => {
         try {
@@ -527,12 +612,14 @@ export function useMapDrawing({
           map.off("dblclick", onDblClick);
           map.off("contextmenu", onContextMenu);
           window.removeEventListener("contextmenu", onContextMenu, true);
+          canvas.removeEventListener("pointermove", onCanvasMove);
           map
             .getCanvas()
             .removeEventListener("contextmenu", onContextMenu, true);
           map.dragPan.enable();
           setPointerCursor(null);
           setMapCursor(map, "");
+          setTracePreview(null);
         } catch {
           window.removeEventListener("contextmenu", onContextMenu, true);
           setPointerCursor(null);
@@ -552,6 +639,7 @@ export function useMapDrawing({
 
   return {
     hoveredId,
+    tracePreview,
     setHoverId,
     resolveMap,
     commitDraft,

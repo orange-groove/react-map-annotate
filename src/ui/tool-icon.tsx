@@ -38,6 +38,17 @@ export function AnnotateToolIcon({
           <path d="M4 16 C7 8 10 18 13 10 C15 6 18 8 20 7" />
         </svg>
       );
+    case "trace":
+      return (
+        <svg {...common}>
+          <path
+            d="M4 16 C7 10 9 10 12 13 C15 16 17 14 20 8"
+            strokeWidth="4.5"
+            opacity="0.28"
+          />
+          <path d="M4 16 C7 10 9 10 12 13 C15 16 17 14 20 8" />
+        </svg>
+      );
     case "line":
       return (
         <svg {...common}>

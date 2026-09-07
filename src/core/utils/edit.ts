@@ -210,7 +210,7 @@ export function circleResizeHandle(
 }
 
 export function drawBoundsRing(annotation: Annotation): LngLat[] {
-  if (annotation.kind !== "draw") return [];
+  if (annotation.kind !== "draw" && annotation.kind !== "trace") return [];
   return boundsRing(annotation.coordinates);
 }
 

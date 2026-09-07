@@ -26,6 +26,8 @@ export function AnnotateChrome({
   hoveredId,
   color,
   labelsEditable,
+  showLabels = true,
+  showArea = true,
   renderArrowHead,
   renderLabel,
   arrows,
@@ -40,6 +42,8 @@ export function AnnotateChrome({
   | "draft"
   | "selectedId"
   | "labelsEditable"
+  | "showLabels"
+  | "showArea"
   | "renderArrowHead"
   | "renderLabel"
   | "onSelect"
@@ -121,6 +125,9 @@ export function AnnotateChrome({
 
       {(annotations ?? []).map((annotation: Annotation) => {
         if (isTextAnnotation(annotation)) return null;
+        if (!showLabels && !(showArea && isAreaAnnotation(annotation))) {
+          return null;
+        }
         const anchor = labelAnchor(annotation);
         if (!anchor) return null;
         const centered = isAreaAnnotation(annotation);
@@ -132,6 +139,8 @@ export function AnnotateChrome({
             latitude={anchor[1]}
             selected={annotation.id === selectedId}
             editable={labelsEditable ?? true}
+            showLabel={showLabels}
+            showArea={showArea}
             markerAnchor={centered ? "center" : "bottom"}
             offset={
               annotation.kind === "marker"

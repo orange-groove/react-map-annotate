@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TestMapGl } from "../test/map-gl";
 import type { Annotation } from "../core/types";
+import { destination, rectangleRing } from "../core/utils/geo";
 import { AnnotationLabel } from "./annotation-label";
 
 const annotation: Annotation = {
@@ -91,6 +92,90 @@ describe("AnnotationLabel", () => {
       screen.getByRole("button", { name: "Route" }).closest(".rma-label")
         ?.className,
     ).toContain("rma-label--centered");
+  });
+
+  it("shows area under a shape label", () => {
+    const origin: [number, number] = [0, 0];
+    const rectangle: Annotation = {
+      id: "rect-1",
+      kind: "rectangle",
+      label: "Lot",
+      coordinates: rectangleRing(
+        origin,
+        destination(destination(origin, 90, 100), 0, 100),
+      ),
+    };
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={rectangle}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+        />
+      </TestMapGl>,
+    );
+    expect(screen.getByRole("button", { name: "Lot" })).toBeTruthy();
+    const area = screen.getByText(/m²$/);
+    expect(Number(area.textContent?.replace(" m²", ""))).toBeCloseTo(
+      10_000,
+      -2,
+    );
+  });
+
+  it("hides the name when showLabel is false", () => {
+    const origin: [number, number] = [0, 0];
+    const rectangle: Annotation = {
+      id: "rect-1",
+      kind: "rectangle",
+      label: "Lot",
+      coordinates: rectangleRing(
+        origin,
+        destination(destination(origin, 90, 100), 0, 100),
+      ),
+    };
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={rectangle}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+          showLabel={false}
+        />
+      </TestMapGl>,
+    );
+    expect(screen.queryByRole("button", { name: "Lot" })).toBeNull();
+    expect(screen.getByText(/m²$/)).toBeTruthy();
+  });
+
+  it("hides the area when showArea is false", () => {
+    const origin: [number, number] = [0, 0];
+    const rectangle: Annotation = {
+      id: "rect-1",
+      kind: "rectangle",
+      label: "Lot",
+      coordinates: rectangleRing(
+        origin,
+        destination(destination(origin, 90, 100), 0, 100),
+      ),
+    };
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={rectangle}
+          longitude={0}
+          latitude={0}
+          selected
+          editable
+          showArea={false}
+        />
+      </TestMapGl>,
+    );
+    expect(screen.getByRole("button", { name: "Lot" })).toBeTruthy();
+    expect(screen.queryByText(/m²$/)).toBeNull();
   });
 
   it("renders a custom label", () => {

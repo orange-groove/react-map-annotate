@@ -18,6 +18,7 @@ function make(kind: AnnotationKind, coordinates: Array<[number, number]>) {
 
 const annotations: Annotation[] = [
   make("draw", [origin, edge, third]),
+  make("trace", [origin, edge, third]),
   make("line", [origin, edge]),
   make("arrow", [origin, edge]),
   make("bidirectional-arrow", [origin, edge]),
@@ -41,6 +42,7 @@ describe("buildAnnotationFeatures", () => {
     );
     expect(kinds).toEqual([
       "draw",
+      "trace",
       "line",
       "arrow",
       "bidirectional-arrow",

@@ -46,7 +46,10 @@ export {
   isDragTool,
   isClickVertexTool,
   isPointTool,
+  isTraceTool,
   isAnnotateLayerId,
+  TRACE_PIXEL_TOLERANCE,
+  TRACE_STITCH_METERS,
 } from "./core/constants";
 
 export {
@@ -65,12 +68,15 @@ export {
   boundsRing,
   ringCentroid,
   pathMidpoint,
+  ringArea,
   formatDistance,
+  formatArea,
   formatElevationDelta,
   measurePath,
   queryGroundElevation,
   formatMeasurement,
   annotationFromDraft,
+  annotationAreaMeters,
   previewCoordinates,
   labelAnchor,
   setAnnotationLabel,
@@ -142,4 +148,10 @@ export type {
   AnnotateToolbarProps,
   AnnotateListProps,
   TerrainSourceOptions,
+  TraceHit,
+  TraceContext,
+  TraceFn,
+  TraceOptions,
+  TraceOption,
+  TraceMap,
 } from "./core/types";

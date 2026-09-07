@@ -61,6 +61,27 @@ export function eventLngLat(event: {
   return [event.lngLat.lng, event.lngLat.lat];
 }
 
+export function eventPoint(
+  event: { point?: { x?: number; y?: number } },
+  map?: {
+    project: (lngLat: { lng: number; lat: number }) => { x: number; y: number };
+  },
+  lngLat?: { lng: number; lat: number },
+): { x: number; y: number } {
+  const x = event.point?.x;
+  const y = event.point?.y;
+  if (
+    typeof x === "number" &&
+    typeof y === "number" &&
+    Number.isFinite(x) &&
+    Number.isFinite(y)
+  ) {
+    return { x, y };
+  }
+  if (map && lngLat) return map.project(lngLat);
+  return { x: 0, y: 0 };
+}
+
 export function clientToLngLat(
   map: {
     getCanvas: () => HTMLElement;

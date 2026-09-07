@@ -7,6 +7,58 @@ export interface MapPoint {
   y: number;
 }
 
+export interface TraceHit {
+  id?: string;
+  coordinates: LngLat[];
+}
+
+export interface TraceContext {
+  map: TraceMap;
+  point: MapPoint;
+  phase: "hover" | "draw";
+}
+
+export type TraceFn = (
+  lngLat: LngLat,
+  context: TraceContext,
+) => TraceHit | null | undefined;
+
+export interface TraceOptions {
+  layers?: string[];
+  pixelTolerance?: number;
+}
+
+export type TraceOption = boolean | TraceFn | TraceOptions;
+
+export interface TraceMap {
+  project: (lngLat: MapLngLat) => MapPoint;
+  unproject: (point: [number, number] | MapPoint) => MapLngLat;
+  getLayer: (id: string) => unknown;
+  getStyle?: () => { layers?: Array<{ id: string; type: string }> };
+  queryRenderedFeatures: (
+    geometry?:
+      | MapPoint
+      | [number, number]
+      | [MapPoint | [number, number], MapPoint | [number, number]],
+    options?: { layers?: string[] },
+  ) => Array<{
+    geometry?: GeoJSON.Geometry;
+    layer?: { id?: string; type?: string };
+    sourceLayer?: string;
+    source?: string;
+    properties?: { id?: unknown };
+  }>;
+  querySourceFeatures?: (
+    source: string,
+    options?: { sourceLayer?: string },
+  ) => Array<{
+    geometry?: GeoJSON.Geometry;
+    layer?: { id?: string; type?: string };
+    sourceLayer?: string;
+    properties?: { id?: unknown };
+  }>;
+}
+
 export interface MapLngLat {
   lng: number;
   lat: number;
@@ -17,6 +69,7 @@ export type LngLat = [longitude: number, latitude: number];
 export type AnnotateTool =
   | "select"
   | "draw"
+  | "trace"
   | "line"
   | "arrow"
   | "bidirectional-arrow"
@@ -66,7 +119,7 @@ interface AnnotationBase {
 }
 
 export interface PathAnnotation extends AnnotationBase {
-  kind: "draw" | "line" | "arrow" | "bidirectional-arrow" | "measure";
+  kind: "draw" | "trace" | "line" | "arrow" | "bidirectional-arrow" | "measure";
   coordinates: LngLat[];
   measurement?: Measurement;
 }
@@ -112,6 +165,9 @@ export interface LabelRenderProps {
   longitude: number;
   latitude: number;
   offset?: [number, number];
+  areaLabel?: string | null;
+  showLabel?: boolean;
+  showArea?: boolean;
   onSelect?: (id: string) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
 }
@@ -147,6 +203,9 @@ export interface AnnotateProps extends AnnotateCallbacks {
   terrainSource?: TerrainSourceOptions;
   interactive?: boolean;
   labelsEditable?: boolean;
+  showLabels?: boolean;
+  showArea?: boolean;
+  trace?: TraceOption;
   renderArrowHead?: (props: ArrowHeadRenderProps) => ReactNode;
   renderLabel?: (props: LabelRenderProps) => ReactNode;
 }

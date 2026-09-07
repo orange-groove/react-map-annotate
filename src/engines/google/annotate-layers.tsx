@@ -33,12 +33,15 @@ export function GoogleAnnotateLayers({
   defaultColor,
   defaultStrokeWidth,
   labelsEditable = true,
+  showLabels = true,
+  showArea = true,
   renderArrowHead,
   renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
   onHandleDragEnd,
+  tracePreview = null,
 }: Pick<
   AnnotateProps,
   | "annotations"
@@ -47,6 +50,8 @@ export function GoogleAnnotateLayers({
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
+  | "showLabels"
+  | "showArea"
   | "renderArrowHead"
   | "renderLabel"
   | "onSelect"
@@ -54,6 +59,7 @@ export function GoogleAnnotateLayers({
   | "onUpdate"
 > & {
   hoveredId?: string | null;
+  tracePreview?: LngLat[] | null;
   onHandleDragEnd?: (id: string) => void;
 }) {
   const color = defaultColor ?? DEFAULT_COLOR;
@@ -88,6 +94,26 @@ export function GoogleAnnotateLayers({
         );
       })}
 
+      {tracePreview && tracePreview.length >= 2 ? (
+        <Polyline
+          path={toPath(tracePreview)}
+          clickable={false}
+          geodesic={false}
+          strokeColor={color}
+          strokeOpacity={0.22}
+          strokeWeight={strokeWidth + 8}
+        />
+      ) : null}
+      {tracePreview && tracePreview.length >= 2 ? (
+        <Polyline
+          path={toPath(tracePreview)}
+          clickable={false}
+          geodesic={false}
+          strokeColor={color}
+          strokeOpacity={0.95}
+          strokeWeight={strokeWidth + 2}
+        />
+      ) : null}
       {lines.features.map((feature, index) => (
         <Polyline
           key={`line-${index}`}
@@ -139,6 +165,8 @@ export function GoogleAnnotateLayers({
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}
+        showLabels={showLabels}
+        showArea={showArea}
         renderArrowHead={renderArrowHead}
         renderLabel={renderLabel}
         arrows={arrows}

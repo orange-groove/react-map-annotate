@@ -36,6 +36,20 @@ describe("useAnnotate", () => {
     expect(result.current.annotations).toEqual([marker]);
     expect(result.current.tool).toBe("select");
     expect(result.current.draft).toBeNull();
+    expect(result.current.showLabels).toBe(true);
+    expect(result.current.showArea).toBe(true);
+  });
+
+  it("honors provider label and area visibility", () => {
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: ({ children }) => (
+        <AnnotateProvider showLabels={false} showArea={false}>
+          {children}
+        </AnnotateProvider>
+      ),
+    });
+    expect(result.current.showLabels).toBe(false);
+    expect(result.current.showArea).toBe(false);
   });
 
   it("adds, updates, labels, and deletes through the session", () => {

@@ -7,6 +7,7 @@ import {
   canPressFinish,
   cssColorForInput,
   committedDraftCoordinates,
+  annotationAreaMeters,
   isAreaAnnotation,
   isArrowAnnotation,
   isMarkerAnnotation,
@@ -32,6 +33,7 @@ const west = destination(north, 270, 60);
 
 const PATH_KINDS = [
   "draw",
+  "trace",
   "line",
   "arrow",
   "bidirectional-arrow",
@@ -86,6 +88,10 @@ describe("annotationFromDraft", () => {
       1,
     );
     expect(isAreaAnnotation(annotation)).toBe(true);
+    expect(annotationAreaMeters(annotation)).toBeCloseTo(
+      Math.PI * 120 * 120,
+      0,
+    );
   });
 
   it("creates a closed rectangle", () => {
@@ -226,6 +232,7 @@ describe("draft helpers", () => {
     expect(canFinishDraft(draft("circle", [origin], east))).toBe(true);
     expect(canFinishDraft(draft("line", [origin, east]))).toBe(true);
     expect(canFinishDraft(draft("draw", [origin], east))).toBe(true);
+    expect(canFinishDraft(draft("trace", [origin, east]))).toBe(true);
   });
 
   it("enables finish while a drawing tool is active", () => {
@@ -260,6 +267,7 @@ describe("labels and collection updates", () => {
       draft("arrow", [origin, east]),
       draft("bidirectional-arrow", [origin, east]),
       draft("draw", [origin, east, north]),
+      draft("trace", [origin, east, north]),
       draft("measure", [origin, east]),
       draft("circle", [origin, east]),
       draft("rectangle", [origin, west]),

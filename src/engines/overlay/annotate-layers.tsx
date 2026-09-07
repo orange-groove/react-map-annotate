@@ -81,6 +81,8 @@ type OverlayAnnotateLayersProps = Pick<
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
+  | "showLabels"
+  | "showArea"
   | "renderArrowHead"
   | "renderLabel"
   | "onSelect"
@@ -88,6 +90,7 @@ type OverlayAnnotateLayersProps = Pick<
   | "onUpdate"
 > & {
   hoveredId?: string | null;
+  tracePreview?: LngLat[] | null;
   onHandleDragEnd?: (id: string) => void;
 };
 
@@ -107,12 +110,15 @@ function OverlayPaint({
   defaultColor,
   defaultStrokeWidth,
   labelsEditable = true,
+  showLabels = true,
+  showArea = true,
   renderArrowHead,
   renderLabel,
   onSelect,
   onLabelChange,
   onUpdate,
   onHandleDragEnd,
+  tracePreview = null,
 }: OverlayAnnotateLayersProps) {
   const tick = React.useContext(OverlayTickContext);
   const { useMap } = useMapGl();
@@ -164,6 +170,28 @@ function OverlayPaint({
             />
           );
         })}
+        {tracePreview && tracePreview.length >= 2 ? (
+          <path
+            d={pathFrom(project, tracePreview)}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth + 8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeOpacity={0.22}
+          />
+        ) : null}
+        {tracePreview && tracePreview.length >= 2 ? (
+          <path
+            d={pathFrom(project, tracePreview)}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth + 2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeOpacity={0.95}
+          />
+        ) : null}
         {lines.features.map((feature, index) => (
           <path
             key={`line-${index}`}
@@ -228,6 +256,8 @@ function OverlayPaint({
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}
+        showLabels={showLabels}
+        showArea={showArea}
         renderArrowHead={renderArrowHead}
         renderLabel={renderLabel}
         arrows={arrows}

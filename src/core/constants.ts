@@ -9,6 +9,7 @@ export const SOURCE_IDS = {
   bounds: `${LAYER_PREFIX}-bounds`,
   samples: `${LAYER_PREFIX}-samples`,
   terrain: `${LAYER_PREFIX}-terrain`,
+  trace: `${LAYER_PREFIX}-trace`,
 } as const;
 
 export const LAYER_IDS = {
@@ -20,6 +21,8 @@ export const LAYER_IDS = {
   bounds: `${LAYER_PREFIX}-bounds`,
   boundsHit: `${LAYER_PREFIX}-bounds-hit`,
   samples: `${LAYER_PREFIX}-samples`,
+  trace: `${LAYER_PREFIX}-trace`,
+  traceHalo: `${LAYER_PREFIX}-trace-halo`,
 } as const;
 
 export const SELECTABLE_LAYER_IDS = [
@@ -61,11 +64,14 @@ export const MAX_TEXT_FONT_SIZE = 160;
 export const SAMPLE_INTERVAL_METERS = 10;
 export const HANDLE_HIT_PX = 20;
 export const DUPLICATE_OFFSET_PX = 32;
+export const TRACE_PIXEL_TOLERANCE = 32;
+export const TRACE_STITCH_METERS = 24;
 export const MAPBOX_TERRAIN_DEM = "mapbox://mapbox.mapbox-terrain-dem-v1";
 export const EARTH_RADIUS_M = 6_371_000;
 
 export const DRAW_TOOLS: AnnotateTool[] = [
   "draw",
+  "trace",
   "line",
   "arrow",
   "bidirectional-arrow",
@@ -89,6 +95,7 @@ export const DRAG_TOOLS: AnnotationKind[] = ["draw", "circle", "rectangle"];
 
 export const DEFAULT_TOOLBAR_TOOLS: AnnotateTool[] = [
   "draw",
+  "trace",
   "line",
   "arrow",
   "bidirectional-arrow",
@@ -103,9 +110,10 @@ export const DEFAULT_TOOLBAR_TOOLS: AnnotateTool[] = [
 export const TOOL_LABELS: Record<AnnotateTool, string> = {
   select: "Select",
   draw: "Freehand",
+  trace: "Trace",
   line: "Line",
   arrow: "Arrow",
-  "bidirectional-arrow": "Bidirectional arrow",
+  "bidirectional-arrow": "Bidirectional Arrow",
   circle: "Circle",
   rectangle: "Rectangle",
   polygon: "Polygon",
@@ -116,9 +124,10 @@ export const TOOL_LABELS: Record<AnnotateTool, string> = {
 
 export const DEFAULT_LABELS: Record<AnnotationKind, string> = {
   draw: "Drawing",
+  trace: "Trace",
   line: "Line",
   arrow: "Arrow",
-  "bidirectional-arrow": "Arrow",
+  "bidirectional-arrow": "Bidirectional Arrow",
   circle: "Circle",
   rectangle: "Rectangle",
   polygon: "Polygon",
@@ -163,6 +172,10 @@ export function isPointTool(
   tool: AnnotateTool | AnnotationKind,
 ): tool is "marker" | "text" {
   return tool === "marker" || tool === "text";
+}
+
+export function isTraceTool(tool: AnnotateTool | undefined): boolean {
+  return tool === "trace";
 }
 
 export function isAnnotateLayerId(layerId: string | undefined): boolean {
