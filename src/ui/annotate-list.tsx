@@ -129,12 +129,40 @@ function AnnotationRow({
         title="Color"
         onChange={(event) => onColorChange?.(annotation.id, event.target.value)}
       />
-      <input
-        className="rma-list-label"
-        value={annotation.label}
-        aria-label={`Label for ${kind}`}
-        onChange={(event) => onLabelChange?.(annotation.id, event.target.value)}
-      />
+      <div className="rma-list-label-wrap">
+        <input
+          className="rma-list-label"
+          value={annotation.label}
+          aria-label={`Label for ${kind}`}
+          onChange={(event) =>
+            onLabelChange?.(annotation.id, event.target.value)
+          }
+        />
+        {annotation.label && onLabelChange ? (
+          <button
+            type="button"
+            className="rma-list-clear"
+            aria-label={`Clear label for ${kind}`}
+            title="Clear label"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => onLabelChange?.(annotation.id, "")}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M3 3 L9 9" />
+              <path d="M9 3 L3 9" />
+            </svg>
+          </button>
+        ) : null}
+      </div>
       {onDelete ? (
         <button
           type="button"
@@ -143,7 +171,21 @@ function AnnotationRow({
           title="Delete"
           onClick={() => onDelete(annotation.id)}
         >
-          ×
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M5 7 H19" />
+            <path d="M9 7 V5 H15 V7" />
+            <path d="M8 7 L9 19 H15 L16 7" />
+          </svg>
         </button>
       ) : null}
       {annotation.kind === "text" ? (

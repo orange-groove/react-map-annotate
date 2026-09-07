@@ -75,6 +75,16 @@ describe("AnnotateList", () => {
     expect(onDelete).toHaveBeenCalledWith("l1");
   });
 
+  it("clears the label from the input", async () => {
+    const onLabelChange = vi.fn();
+    const user = userEvent.setup();
+    render(<AnnotateList annotations={[line]} onLabelChange={onLabelChange} />);
+    await user.click(
+      screen.getByRole("button", { name: "Clear label for Line" }),
+    );
+    expect(onLabelChange).toHaveBeenCalledWith("l1", "");
+  });
+
   it("shows an empty state", () => {
     render(<AnnotateList annotations={[]} />);
     expect(screen.getByText("No annotations")).toBeTruthy();

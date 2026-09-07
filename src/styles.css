@@ -429,13 +429,18 @@ html.rma-dragging * {
   letter-spacing: 0.03em;
 }
 
-.rma-list-label {
+.rma-list-label-wrap {
   grid-area: label;
+  position: relative;
+  min-width: 0;
+}
+
+.rma-list-label {
   display: block;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 4px 7px;
+  padding: 4px 24px 4px 7px;
   border-radius: 6px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #f8fafc;
@@ -451,8 +456,34 @@ html.rma-dragging * {
   background: #ffffff;
 }
 
+.rma-list-clear {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.rma-list-clear:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
 .rma-list-delete {
   grid-area: delete;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   padding: 0;
@@ -460,9 +491,6 @@ html.rma-dragging * {
   border-radius: 6px;
   background: transparent;
   color: #94a3b8;
-  font:
-    400 18px/1 system-ui,
-    sans-serif;
   cursor: pointer;
 }
 
