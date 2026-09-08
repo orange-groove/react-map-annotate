@@ -7,7 +7,12 @@ import {
   isTextAnnotation,
   labelAnchor,
 } from "./annotations";
-import { drawBoundsRing, textHitSize } from "./edit";
+import {
+  drawBoundsRing,
+  rotateScreenOffset,
+  textHitSize,
+  textRotation,
+} from "./edit";
 
 const LINE_HIT_PX = 9;
 const MARKER_HIT_HALF_W = 16;
@@ -116,12 +121,11 @@ function hitText(
     lat: annotation.coordinate[1],
   });
   const { width, height } = textHitSize(annotation);
-  return (
-    point.x >= origin.x - width / 2 &&
-    point.x <= origin.x + width / 2 &&
-    point.y >= origin.y - height / 2 &&
-    point.y <= origin.y + height / 2
+  const local = rotateScreenOffset(
+    { x: point.x - origin.x, y: point.y - origin.y },
+    -textRotation(annotation),
   );
+  return Math.abs(local.x) <= width / 2 && Math.abs(local.y) <= height / 2;
 }
 
 export function hitTestAnnotations(
@@ -237,12 +241,19 @@ export function annotationScreenBounds(
       lat: annotation.coordinate[1],
     });
     const { width, height } = textHitSize(annotation);
-    return {
-      x: origin.x - width / 2,
-      y: origin.y - height / 2,
-      width,
-      height,
-    };
+    const rotation = textRotation(annotation);
+    const corners = (
+      [
+        { x: -width / 2, y: -height / 2 },
+        { x: width / 2, y: -height / 2 },
+        { x: width / 2, y: height / 2 },
+        { x: -width / 2, y: height / 2 },
+      ] as MapPoint[]
+    ).map((offset) => {
+      const rotated = rotateScreenOffset(offset, rotation);
+      return { x: origin.x + rotated.x, y: origin.y + rotated.y };
+    });
+    return boundsFromPoints(corners);
   }
   if (isMarkerAnnotation(annotation)) {
     const tip = project({

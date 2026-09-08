@@ -210,8 +210,8 @@ export function buildAnnotationFeatures({
       arrows.push(...arrowsFor(annotation, color, selected, strokeWidth));
       if (
         (annotation.kind === "draw" || annotation.kind === "trace") &&
-        annotation.id === hoveredId &&
-        !annotation.groupId
+        !annotation.groupId &&
+        (annotation.id === hoveredId || selected)
       ) {
         const box = drawBoundsRing(annotation);
         if (box.length >= 4) {

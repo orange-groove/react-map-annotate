@@ -113,6 +113,20 @@ describe("hitTestAnnotations", () => {
     expect(hitTestAnnotations(project, { x: 400, y: 400 }, [text])).toBeNull();
   });
 
+  it("hits rotated text in the turned box", () => {
+    const text: Annotation = {
+      id: "text-1",
+      kind: "text",
+      label: "Hello",
+      coordinate: [1, 1],
+      rotation: 90,
+      style: { fontSize: 28 },
+    };
+    expect(hitTestAnnotations(project, { x: 100, y: 100 }, [text])).toBe(
+      "text-1",
+    );
+  });
+
   it("prefers the later path when two overlap", () => {
     const other: Annotation = {
       ...line,

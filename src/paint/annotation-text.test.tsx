@@ -69,6 +69,24 @@ describe("AnnotationText", () => {
     expect(label.parentElement?.style.fontFamily).toBe("Georgia, serif");
   });
 
+  it("rotates the label from the stored angle", () => {
+    const { kit } = createKit();
+    render(
+      <MapGlProvider value={kit}>
+        <AnnotationText
+          annotation={{ ...note, rotation: 25 }}
+          selected={false}
+          active={false}
+          color="#2563eb"
+          editable
+        />
+      </MapGlProvider>,
+    );
+    expect(screen.getByText("Hello").parentElement?.style.transform).toBe(
+      "rotate(25deg)",
+    );
+  });
+
   it("moves the text while dragging", () => {
     const { kit, dragPan } = createKit();
     const onUpdate = vi.fn();

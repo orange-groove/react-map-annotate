@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bearingDelta,
   circleRing,
   boundsRing,
   closeRing,
@@ -18,6 +19,7 @@ import {
   rectangleRing,
   ringArea,
   ringCentroid,
+  rotateLngLat,
 } from "./geo";
 
 describe("haversineDistance", () => {
@@ -38,6 +40,25 @@ describe("destination / bearing", () => {
     expect(next[0]).toBeCloseTo(0, 5);
     expect(haversineDistance([0, 0], next)).toBeCloseTo(1_000, 3);
     expect(initialBearing([0, 0], next)).toBeCloseTo(0, 5);
+  });
+});
+
+describe("bearingDelta", () => {
+  it("returns the signed shortest turn", () => {
+    expect(bearingDelta(10, 20)).toBeCloseTo(10);
+    expect(bearingDelta(350, 10)).toBeCloseTo(20);
+    expect(bearingDelta(10, 350)).toBeCloseTo(-20);
+  });
+});
+
+describe("rotateLngLat", () => {
+  it("rotates a point around a center by bearing delta", () => {
+    const center: [number, number] = [0, 0];
+    const east = destination(center, 90, 100);
+    const south = rotateLngLat(east, center, 90);
+    expect(initialBearing(center, south)).toBeCloseTo(180, 5);
+    expect(haversineDistance(center, south)).toBeCloseTo(100, 3);
+    expect(rotateLngLat(east, center, 0)).toEqual(east);
   });
 });
 

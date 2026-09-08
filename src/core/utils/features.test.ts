@@ -200,6 +200,14 @@ describe("buildAnnotationFeatures", () => {
     expect(features.bounds.features[0]?.properties?.id).toBe("draw");
   });
 
+  it("shows a bounds box for a selected drawing", () => {
+    const features = buildAnnotationFeatures({
+      annotations,
+      selectedId: "draw",
+    });
+    expect(features.bounds.features[0]?.properties?.id).toBe("draw");
+  });
+
   it("does not emit a geographic group box; hover bounds are screen-space", () => {
     const grouped: Annotation[] = [
       { ...make("line", [origin, edge]), groupId: "g1" },

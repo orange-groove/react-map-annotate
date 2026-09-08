@@ -2,11 +2,13 @@
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useRef, useState } from "react";
+import { RotateCw } from "lucide-react";
 import { DEFAULT_COLOR, HANDLE_HIT_PX } from "../core/constants";
 import { useMapGl } from "../engines/kit/context";
 import type { Annotation, LngLat, SelectOptions } from "../core/types";
 import {
   applyEditHandle,
+  canRemoveVertex,
   editHandleCursor,
   editHandlesFor,
   type EditHandleHit,
@@ -34,6 +36,14 @@ function CircleResizeIcon() {
       <path d="M8.5 14 H14 V8.5" />
     </svg>
   );
+}
+
+function RotateIcon() {
+  return <RotateCw size={14} strokeWidth={2} aria-hidden />;
+}
+
+function isIconHandle(kind: EditHandleHit["kind"]) {
+  return kind === "resize" || kind === "rotate";
 }
 
 function handleHitStyle(kind: EditHandleHit["kind"]): CSSProperties {
@@ -67,7 +77,7 @@ function handleVisualStyle(
     color,
     pointerEvents: "none",
     opacity: kind === "insert" ? 0.85 : 1,
-    ...(kind === "resize"
+    ...(isIconHandle(kind)
       ? {
           display: "grid",
           placeItems: "center",
@@ -135,7 +145,7 @@ function HandleMarker({
         );
       },
       onDragEnd,
-      editHandleCursor(handle),
+      editHandleCursor(handle, true),
     );
   }
 
@@ -167,13 +177,16 @@ function HandleMarker({
           className={
             kind === "resize"
               ? "rma-resize"
-              : kind === "insert"
-                ? "rma-vertex rma-vertex--insert"
-                : `rma-vertex${selected ? " rma-vertex--selected" : ""}`
+              : kind === "rotate"
+                ? "rma-rotate"
+                : kind === "insert"
+                  ? "rma-vertex rma-vertex--insert"
+                  : `rma-vertex${selected ? " rma-vertex--selected" : ""}`
           }
           style={handleVisualStyle(color, kind, selected)}
         >
           {kind === "resize" ? <CircleResizeIcon /> : null}
+          {kind === "rotate" ? <RotateIcon /> : null}
         </div>
       </div>
     </Marker>
@@ -220,23 +233,37 @@ export function EditHandles({
           handle={handle}
           color={color}
           selected={
+            !dragId &&
             handle.kind === "vertex" &&
             session?.selectedId === annotation.id &&
             session.selectedVertexIndex === handle.index
           }
           label={
             handle.kind === "resize"
-              ? "Resize circle"
-              : handle.kind === "insert"
-                ? `Add ${annotation.kind} vertex`
-                : `Resize ${annotation.kind} vertex ${handle.index + 1}`
+              ? annotation.kind === "draw"
+                ? "Resize drawing"
+                : "Resize circle"
+              : handle.kind === "rotate"
+                ? `Rotate ${annotation.kind === "draw" ? "drawing" : annotation.kind}`
+                : handle.kind === "insert"
+                  ? `Add ${annotation.kind} vertex`
+                  : `Resize ${annotation.kind} vertex ${handle.index + 1}`
           }
           onSelect={(options) => {
             session?.setSelectedId(annotation.id, options);
             if (options?.additive) return;
-            session?.setSelectedVertexIndex(
-              handle.kind === "insert" ? handle.index + 1 : handle.index,
-            );
+            if (handle.kind === "insert") {
+              session?.setSelectedVertexIndex(handle.index + 1);
+              return;
+            }
+            if (
+              handle.kind === "vertex" &&
+              canRemoveVertex(annotation, handle.index)
+            ) {
+              session?.setSelectedVertexIndex(handle.index);
+              return;
+            }
+            session?.setSelectedVertexIndex(null);
           }}
           onUpdate={onUpdate}
           onDragStart={() => {

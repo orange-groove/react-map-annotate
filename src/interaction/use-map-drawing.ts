@@ -25,6 +25,7 @@ import {
 } from "../core/utils/annotations";
 import {
   applyEditHandle,
+  canRemoveVertex,
   editHandleCursor,
   editHandlesFor,
   moveAnnotation,
@@ -383,14 +384,18 @@ export function useMapDrawing({
           latestRef.current.setSelectedVertexIndex?.(
             handleTarget.handle.kind === "insert"
               ? handleTarget.handle.index + 1
-              : handleTarget.handle.kind === "vertex"
+              : handleTarget.handle.kind === "vertex" &&
+                  canRemoveVertex(
+                    handleTarget.annotation,
+                    handleTarget.handle.index,
+                  )
                 ? handleTarget.handle.index
                 : null,
           );
           setHoverId(handleTarget.annotation.id);
           map.dragPan.disable();
-          setMapCursor(map, editHandleCursor(handleTarget.handle));
-          setPointerCursor(editHandleCursor(handleTarget.handle));
+          setMapCursor(map, editHandleCursor(handleTarget.handle, true));
+          setPointerCursor(editHandleCursor(handleTarget.handle, true));
           return;
         }
         const targetId =
@@ -470,8 +475,8 @@ export function useMapDrawing({
                 handleAt: edit.handleAt,
               }),
             );
-            setMapCursor(map, editHandleCursor(edit.handle));
-            setPointerCursor(editHandleCursor(edit.handle));
+            setMapCursor(map, editHandleCursor(edit.handle, true));
+            setPointerCursor(editHandleCursor(edit.handle, true));
           } else if (edit.originals.length > 1) {
             const moved = edit.originals.map((item) =>
               moveAnnotation(item, edit.start, point),

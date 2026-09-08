@@ -9,10 +9,7 @@ import {
 import { DEFAULT_LABELS } from "../core/constants";
 import type { Annotation, SelectOptions, TextAnnotation } from "../core/types";
 import { moveAnnotation, resizeText, textFontSize } from "../core/utils/edit";
-import {
-  isAdditiveSelect,
-  nextSelectedIds,
-} from "../core/utils/selection";
+import { isAdditiveSelect, nextSelectedIds } from "../core/utils/selection";
 import { handleInteraction } from "../core/utils/interaction";
 import { useMapGl } from "../engines/kit/context";
 import { startHandleDrag } from "../interaction/pointer-drag";
@@ -162,6 +159,9 @@ export function AnnotationText({
           fontSize,
           fontFamily: annotation.style?.fontFamily,
           cursor: editing ? "text" : "grab",
+          transform: annotation.rotation
+            ? `rotate(${annotation.rotation}deg)`
+            : undefined,
         }}
         onPointerDown={onMovePointerDown}
         onDoubleClick={(event) => {

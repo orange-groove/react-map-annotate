@@ -130,7 +130,7 @@ This library is for when the drawing session itself is React state: the same
 | React state ownership | `Annotation[]` on the provider. `onChange` is the write path.                | Internal GeoJSON store. Snapshot it (`getSnapshot`) and subscribe to change events to sync into React. | Draw's feature store (`getAll` / `set`). Sync out via events. | Layers on the map.                  | Overlay objects on the map.                 |
 | Custom UI APIs        | Headless hooks: `useAnnotate()`, `useAnnotateTools()`, `useAnnotateItems()`. | Imperative instance API. Fully controllable; no React hooks.                                           | `changeMode`; hide or restyle the default control.            | Custom `L.Control`, or hide theirs. | `drawingControl: false` + `setDrawingMode`. |
 | Supported engines     | Mapbox, MapLibre, Google, Leaflet, ArcGIS                                    | Mapbox, MapLibre, Google, Leaflet, OpenLayers                                                          | Mapbox (MapLibre via community ports)                         | Leaflet                             | Google Maps                                 |
-| Built-in editing      | Move, vertex drag, mid-edge insert, vertex delete, undo / redo               | Select mode (drag, scale, rotate) plus undo / redo                                                     | `simple_select` / `direct_select`                             | Edit / delete handlers              | Limited after the shape is placed           |
+| Built-in editing      | Move, vertex drag, rotate, mid-edge insert, vertex delete, undo / redo       | Select mode (drag, scale, rotate) plus undo / redo                                                     | `simple_select` / `direct_select`                             | Edit / delete handlers              | Limited after the shape is placed           |
 | Measurement           | Geodesic path, 10 m samples, optional terrain elevation                      | Not built in. Measure from the GeoJSON you already have.                                               | Not built in.                                                 | Not built in.                       | Not built in.                               |
 
 Engine-locked managers (Mapbox GL Draw, Leaflet.Draw, Google Drawing Manager)
@@ -364,11 +364,12 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 - **Line, arrow, bidirectional arrow, measure** — complete on the second click.
 - **Polygon** — click vertices, then Finish.
 - **Marker** — click to drop a pin.
-- **Text** — click to place. Type to edit. Corner handle resizes. Color from
-  the list.
+- **Text** — click to place. Type to edit. Corner handle resizes. Rotate
+  handle turns it. Color from the list.
 - **Edit** — hover or select a finished shape to move it. End handles resize
   lines, arrows, and measures. Vertices resize polygons and rectangles. A
-  diagonal handle resizes circles. Hollow mid-edge handles insert vertices on
+  diagonal handle resizes circles. A rotate handle turns drawings, rectangles,
+  polygons, and text around their center. Hollow mid-edge handles insert vertices on
   polygons and paths. Double-click a vertex (or select it and press Delete) to
   remove it. Click empty map to deselect. Shift-click or ⌘/Ctrl-click to select more than one annotation.
   With the Select tool, drag a dotted rectangle to select everything inside
@@ -409,20 +410,20 @@ enabled, each sample records ground height.
 
 ## Tools
 
-| Tool                  | What it does                                                                                                                       |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Select                | Click to select. Shift/⌘-click for more than one. Drag a dotted box to select several at once.                                     |
-| Freehand              | Sketch a path. Hover for a bounds box; drag to move.                                                                               |
-| Trace                 | Hover a rendered road or building outline, click to adopt it. No freehand, no per-vertex handles.                                  |
-| Line                  | Two-click segment. Hover ends to resize.                                                                                           |
-| Arrow / bidirectional | Line plus SVG heads. Size from the list, or `setStyle({ strokeWidth })` — widens the shaft and the heads.                          |
-| Circle                | Drag to create. Hover for a resize handle.                                                                                         |
-| Rectangle             | Drag to create. Hover vertices to resize.                                                                                          |
-| Polygon               | Click vertices, Finish to close.                                                                                                   |
-| Measure               | Geodesic length, optional terrain samples.                                                                                         |
-| Marker                | Labeled map pin. Drag the pin to move it.                                                                                          |
-| Text                  | Click to place. Drag to move, corner to resize. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
-| Finish                | Commit the draft (same as Enter).                                                                                                  |
+| Tool                  | What it does                                                                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Select                | Click to select. Shift/⌘-click for more than one. Drag a dotted box to select several at once.                                                            |
+| Freehand              | Sketch a path. Hover for a bounds box; drag to move. Corner handle resizes; rotate handle turns it.                                                       |
+| Trace                 | Hover a rendered road or building outline, click to adopt it. No freehand, no per-vertex handles.                                                         |
+| Line                  | Two-click segment. Hover ends to resize.                                                                                                                  |
+| Arrow / bidirectional | Line plus SVG heads. Size from the list, or `setStyle({ strokeWidth })` — widens the shaft and the heads.                                                 |
+| Circle                | Drag to create. Hover for a resize handle.                                                                                                                |
+| Rectangle             | Drag to create. Hover vertices to resize, rotate handle to turn.                                                                                          |
+| Polygon               | Click vertices, Finish to close. Rotate handle turns it.                                                                                                  |
+| Measure               | Geodesic length, optional terrain samples.                                                                                                                |
+| Marker                | Labeled map pin. Drag the pin to move it.                                                                                                                 |
+| Text                  | Click to place. Drag to move, corner to resize, rotate handle to turn. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
+| Finish                | Commit the draft (same as Enter).                                                                                                                         |
 
 Mapbox and MapLibre query rendered road and building layers — no `trace` prop.
 Google, Leaflet, and ArcGIS need a `trace` callback; see

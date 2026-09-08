@@ -9,8 +9,10 @@ import {
   applyEditHandle,
   canInsertVertices,
   canRemoveVertex,
+  canRotateAnnotation,
   circleResizeHandle,
   editHandleCursor,
+  editHandlesFor,
   editableVertices,
   hitEditHandle,
   insertVertex,
@@ -23,10 +25,23 @@ import {
   resizeCircle,
   resizeRectangleVertex,
   resizeText,
+  rotateAnnotation,
+  rotateHandleFor,
+  rotationCenter,
+  drawBoundsRing,
+  drawResizeHandle,
+  resizeDraw,
   textFontSize,
 } from "./edit";
 import { formatMeasurement, measurePath } from "./measure";
-import { destination, haversineDistance, rectangleRing } from "./geo";
+import {
+  bearingDelta,
+  destination,
+  haversineDistance,
+  initialBearing,
+  rectangleRing,
+  ringCentroid,
+} from "./geo";
 
 const origin: [number, number] = [-73.9857, 40.7484];
 const east = destination(origin, 90, 80);
@@ -101,6 +116,17 @@ describe("shape edits", () => {
     expect(vertices).toHaveLength(4);
     const next = resizeRectangleVertex(rectangle, 0, west);
     expect(next.coordinates[2]).toEqual(rectangle.coordinates[2]);
+  });
+
+  it("keeps a rotated rectangle's opposite corner and orientation", () => {
+    const center = ringCentroid(rectangle.coordinates);
+    const rotated = rotateAnnotation(rectangle, center, 35);
+    if (rotated.kind !== "rectangle") throw new Error("expected rectangle");
+    const next = resizeRectangleVertex(rotated, 0, west);
+    expect(next.coordinates[2]).toEqual(rotated.coordinates[2]);
+    const axisAligned = rectangleRing(next.coordinates[2], next.coordinates[0]);
+    expect(next.coordinates[1][0]).not.toBeCloseTo(axisAligned[1][0], 5);
+    expect(next.coordinates[1][1]).not.toBeCloseTo(axisAligned[1][1], 5);
   });
 
   it("moves a single polygon vertex", () => {
@@ -278,6 +304,10 @@ describe("handle hit radius", () => {
     expect(editHandleCursor({ kind: "vertex", index: 0 })).toBe("move");
     expect(editHandleCursor({ kind: "insert", index: 0 })).toBe("pointer");
     expect(editHandleCursor({ kind: "resize", index: 0 })).toBe("nwse-resize");
+    expect(editHandleCursor({ kind: "rotate", index: 0 })).toBe("grab");
+    expect(editHandleCursor({ kind: "rotate", index: 0 }, true)).toBe(
+      "grabbing",
+    );
   });
 
   it("applies the matching edit from a handle hit", () => {
@@ -375,6 +405,196 @@ describe("vertex insert and delete", () => {
     const next = applyEditHandle(path, { kind: "insert", index: 0 }, west);
     if (next.kind !== "line") throw new Error("expected line");
     expect(next.coordinates).toEqual([origin, west, east]);
+  });
+});
+
+describe("rotate", () => {
+  const drawing: PathAnnotation = {
+    id: "draw",
+    kind: "draw",
+    label: "Drawing",
+    coordinates: [origin, east, north],
+  };
+
+  it("exposes a rotate handle on drawings, rectangles, polygons, and text", () => {
+    const note: TextAnnotation = {
+      id: "note",
+      kind: "text",
+      label: "Hello",
+      coordinate: origin,
+    };
+    expect(canRotateAnnotation(drawing)).toBe(true);
+    expect(canRotateAnnotation(rectangle)).toBe(true);
+    expect(canRotateAnnotation(polygon)).toBe(true);
+    expect(canRotateAnnotation(note)).toBe(true);
+    expect(canRotateAnnotation(circle)).toBe(false);
+    expect(
+      editHandlesFor(drawing).some((handle) => handle.kind === "rotate"),
+    ).toBe(true);
+    expect(
+      editHandlesFor(rectangle).some((handle) => handle.kind === "rotate"),
+    ).toBe(true);
+    expect(
+      editHandlesFor(polygon).some((handle) => handle.kind === "rotate"),
+    ).toBe(true);
+    expect(
+      editHandlesFor(note).some((handle) => handle.kind === "rotate"),
+    ).toBe(true);
+  });
+
+  it("places the rotate handle beyond the top-right corner", () => {
+    const center = rotationCenter(rectangle);
+    const corner = rectangle.coordinates[2];
+    const handle = rotateHandleFor(rectangle);
+    expect(center).toBeTruthy();
+    expect(corner).toBeTruthy();
+    expect(handle).toBeTruthy();
+    expect(haversineDistance(center!, handle!)).toBeGreaterThan(
+      haversineDistance(center!, corner!),
+    );
+  });
+
+  it("rotates every drawing vertex around the centroid", () => {
+    const center = rotationCenter(drawing);
+    expect(center).toBeTruthy();
+    const rotated = rotateAnnotation(drawing, center!, 90);
+    if (rotated.kind !== "draw") throw new Error("expected draw");
+    for (const [index, coordinate] of drawing.coordinates.entries()) {
+      expect(
+        haversineDistance(center!, rotated.coordinates[index]),
+      ).toBeCloseTo(haversineDistance(center!, coordinate), 1);
+      expect(
+        bearingDelta(
+          initialBearing(center!, coordinate) + 90,
+          initialBearing(center!, rotated.coordinates[index]),
+        ),
+      ).toBeCloseTo(0, 0);
+    }
+    expect(rotated.rotation).toBe(90);
+  });
+
+  it("keeps the drawing outline and rotate handle on the oriented box", () => {
+    const center = rotationCenter(drawing)!;
+    const rotated = rotateAnnotation(drawing, center, 40);
+    if (rotated.kind !== "draw") throw new Error("expected draw");
+    const box = drawBoundsRing(rotated);
+    expect(box[0]?.[1]).not.toBeCloseTo(box[1]?.[1] ?? 0, 5);
+    const handle = rotateHandleFor(rotated)!;
+    expect(haversineDistance(center, handle)).toBeGreaterThan(
+      haversineDistance(center, box[2]!),
+    );
+    expect(
+      bearingDelta(
+        initialBearing(center, box[2]!),
+        initialBearing(center, handle),
+      ),
+    ).toBeCloseTo(0, 0);
+  });
+
+  it("anchors the drawing resize handle on the oriented box", () => {
+    expect(drawResizeHandle(drawing)).toEqual(drawBoundsRing(drawing)[1]);
+    const center = rotationCenter(drawing)!;
+    const rotated = rotateAnnotation(drawing, center, 40);
+    if (rotated.kind !== "draw") throw new Error("expected draw");
+    const box = drawBoundsRing(rotated);
+    expect(drawResizeHandle(rotated)).toEqual(box[1]);
+    const resize = editHandlesFor(rotated).find(
+      (handle) => handle.kind === "resize",
+    );
+    expect(resize?.coordinate).toEqual(box[1]);
+  });
+
+  it("resizes a drawing from the box corner", () => {
+    const handle = drawResizeHandle(drawing)!;
+    const opposite = drawBoundsRing(drawing)[3]!;
+    const farther = destination(
+      opposite,
+      initialBearing(opposite, handle),
+      haversineDistance(opposite, handle) * 2,
+    );
+    const next = resizeDraw(drawing, farther);
+    expect(
+      haversineDistance(next.coordinates[0], next.coordinates[1]),
+    ).toBeGreaterThan(
+      haversineDistance(drawing.coordinates[0], drawing.coordinates[1]),
+    );
+  });
+
+  it("applies a rotate handle from the pointer bearing", () => {
+    const center = rotationCenter(rectangle);
+    const handle = rotateHandleFor(rectangle);
+    expect(center).toBeTruthy();
+    expect(handle).toBeTruthy();
+    const distance = haversineDistance(center!, handle!);
+    const next = destination(
+      center!,
+      initialBearing(center!, handle!) + 45,
+      distance,
+    );
+    const rotated = applyEditHandle(
+      rectangle,
+      { kind: "rotate", index: 0 },
+      next,
+    );
+    if (rotated.kind !== "rectangle") throw new Error("expected rectangle");
+    const first = rectangle.coordinates[0];
+    const moved = rotated.coordinates[0];
+    expect(haversineDistance(center!, moved)).toBeCloseTo(
+      haversineDistance(center!, first),
+      1,
+    );
+    expect(
+      bearingDelta(
+        initialBearing(center!, first) + 45,
+        initialBearing(center!, moved),
+      ),
+    ).toBeCloseTo(0, 0);
+  });
+
+  it("rotates polygon vertices around the centroid", () => {
+    const center = rotationCenter(polygon);
+    expect(center).toBeTruthy();
+    const rotated = rotateAnnotation(polygon, center!, 40);
+    if (rotated.kind !== "polygon") throw new Error("expected polygon");
+    expect(haversineDistance(center!, rotated.coordinates[0])).toBeCloseTo(
+      haversineDistance(center!, polygon.coordinates[0]),
+      1,
+    );
+    expect(rotated.rotation).toBe(40);
+  });
+
+  it("keeps the polygon rotate handle on the oriented top-right", () => {
+    const center = rotationCenter(polygon)!;
+    const rotated = rotateAnnotation(polygon, center, 40);
+    if (rotated.kind !== "polygon") throw new Error("expected polygon");
+    const handle = rotateHandleFor(rotated)!;
+    const before = rotateHandleFor(polygon)!;
+    expect(
+      bearingDelta(
+        initialBearing(center, before),
+        initialBearing(center, handle),
+      ),
+    ).toBeCloseTo(40, 0);
+  });
+
+  it("stores text rotation without moving the anchor", () => {
+    const note: TextAnnotation = {
+      id: "note",
+      kind: "text",
+      label: "Hello",
+      coordinate: origin,
+    };
+    const handle = rotateHandleFor(note);
+    expect(handle).toBeTruthy();
+    const next = destination(
+      origin,
+      initialBearing(origin, handle!) + 30,
+      haversineDistance(origin, handle!),
+    );
+    const rotated = applyEditHandle(note, { kind: "rotate", index: 0 }, next);
+    if (rotated.kind !== "text") throw new Error("expected text");
+    expect(rotated.coordinate).toEqual(origin);
+    expect(rotated.rotation).toBeCloseTo(30, 0);
   });
 });
 

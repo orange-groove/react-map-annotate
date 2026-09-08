@@ -21,11 +21,7 @@ export interface TraceContext {
 export type TraceFn = (
   lngLat: LngLat,
   context: TraceContext,
-) =>
-  | TraceHit
-  | null
-  | undefined
-  | Promise<TraceHit | null | undefined>;
+) => TraceHit | null | undefined | Promise<TraceHit | null | undefined>;
 
 export interface TraceOptions {
   layers?: string[];
@@ -128,6 +124,7 @@ export interface PathAnnotation extends AnnotationBase {
   kind: "draw" | "trace" | "line" | "arrow" | "bidirectional-arrow" | "measure";
   coordinates: LngLat[];
   measurement?: Measurement;
+  rotation?: number;
 }
 
 export interface AreaAnnotation extends AnnotationBase {
@@ -135,6 +132,7 @@ export interface AreaAnnotation extends AnnotationBase {
   coordinates: LngLat[];
   center?: LngLat;
   radiusMeters?: number;
+  rotation?: number;
 }
 
 export interface MarkerAnnotation extends AnnotationBase {
@@ -145,6 +143,7 @@ export interface MarkerAnnotation extends AnnotationBase {
 export interface TextAnnotation extends AnnotationBase {
   kind: "text";
   coordinate: LngLat;
+  rotation?: number;
 }
 
 export type Annotation =

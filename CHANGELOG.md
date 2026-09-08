@@ -3,6 +3,11 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.11
+
+- Rotate handle on drawings, rectangles, polygons, and text. Drawings also
+  resize from a handle on the bounds box, which turns with the outline.
+
 ## 0.3.10
 
 - Select marquee follows the pointer on Google Maps and draws on Leaflet.

@@ -51,6 +51,25 @@ export function destination(
   return [((lng2 * TO_DEG + 540) % 360) - 180, lat2 * TO_DEG];
 }
 
+export function bearingDelta(fromDeg: number, toDeg: number): number {
+  return ((toDeg - fromDeg + 540) % 360) - 180;
+}
+
+export function rotateLngLat(
+  point: LngLat,
+  center: LngLat,
+  deltaDeg: number,
+): LngLat {
+  if (deltaDeg === 0) return point;
+  const distance = haversineDistance(center, point);
+  if (distance === 0) return point;
+  return destination(
+    center,
+    initialBearing(center, point) + deltaDeg,
+    distance,
+  );
+}
+
 export function interpolateGeodesic(
   a: LngLat,
   b: LngLat,
