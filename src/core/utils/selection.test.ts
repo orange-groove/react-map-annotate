@@ -3,10 +3,12 @@ import type { Annotation } from "../types";
 import {
   canGroupAnnotations,
   canUngroupAnnotations,
+  editHandleAnnotationId,
   expandGroupIds,
   groupAnnotations,
   idIsSelected,
   isAdditiveSelect,
+  isSingleEditSelection,
   nextSelectedIds,
   remapPastedGroupIds,
   toggleSelectedIds,
@@ -48,7 +50,11 @@ const d: Annotation = {
 
 describe("expandGroupIds", () => {
   it("includes every member of a selected group", () => {
-    expect(expandGroupIds([a, c, d], ["c"])).toEqual(["c", "d"]);
+    expect(expandGroupIds([a, c, d], ["c"])).toEqual(["d", "c"]);
+  });
+
+  it("keeps the requested id last so it stays the primary selection", () => {
+    expect(expandGroupIds([a, c, d], ["d"])).toEqual(["c", "d"]);
   });
 
   it("leaves ungrouped ids unchanged", () => {
@@ -64,8 +70,8 @@ describe("nextSelectedIds", () => {
   it("toggles a group additively", () => {
     expect(nextSelectedIds([a, c, d], ["a"], "c", true)).toEqual([
       "a",
-      "c",
       "d",
+      "c",
     ]);
     expect(toggleSelectedIds([a, c, d], ["a", "c", "d"], "c")).toEqual(["a"]);
   });
@@ -113,6 +119,40 @@ describe("idIsSelected", () => {
     expect(idIsSelected("a", ["a", "b"], "b")).toBe(true);
     expect(idIsSelected("c", ["a", "b"], "c")).toBe(false);
     expect(idIsSelected("c", undefined, "c")).toBe(true);
+  });
+});
+
+describe("edit handles for a selection", () => {
+  it("treats a selected group as a single editable unit", () => {
+    expect(isSingleEditSelection([c, d], ["c", "d"])).toBe(true);
+    expect(isSingleEditSelection([a, b], ["a", "b"])).toBe(false);
+    expect(isSingleEditSelection([a, b], ["a"])).toBe(true);
+  });
+
+  it("keeps handles on the hovered member of a selected group", () => {
+    expect(
+      editHandleAnnotationId([c, d], {
+        selectedIds: ["c", "d"],
+        hoveredId: "c",
+        selectedId: "d",
+      }),
+    ).toBe("c");
+    expect(
+      editHandleAnnotationId([c, d], {
+        selectedIds: ["c", "d"],
+        selectedId: "d",
+      }),
+    ).toBe("d");
+  });
+
+  it("hides handles when independent annotations are multi-selected", () => {
+    expect(
+      editHandleAnnotationId([a, b], {
+        selectedIds: ["a", "b"],
+        selectedId: "b",
+        hoveredId: "a",
+      }),
+    ).toBeNull();
   });
 });
 

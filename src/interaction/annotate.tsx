@@ -5,6 +5,7 @@ import type { AnnotateProps } from "../core/types";
 import { peekAnnotationClipboardItems } from "../core/utils/clipboard";
 import { useMapGl } from "../engines/kit/context";
 import { AnnotateLayers } from "../paint/gl-layers";
+import { GroupHoverBounds } from "../paint/group-hover-bounds";
 import { SelectionMarquee } from "../paint/marquee";
 import { AnnotationContextMenu } from "../ui/annotation-context-menu";
 import { useMapDrawing } from "./use-map-drawing";
@@ -145,6 +146,12 @@ export function Annotate({
           session.session.endEdit();
           setHoverId(id);
         }}
+      />
+      <GroupHoverBounds
+        annotations={session.annotations}
+        hoveredId={hoveredId}
+        showLabels={session.showLabels}
+        defaultColor={session.defaultColor}
       />
       <SelectionMarquee rect={marquee} />
       {contextMenu ? (

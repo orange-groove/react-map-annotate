@@ -5,12 +5,23 @@ import {
   isMarkerAnnotation,
   isPathAnnotation,
   isTextAnnotation,
+  labelAnchor,
 } from "./annotations";
 import { drawBoundsRing, textHitSize } from "./edit";
 
 const LINE_HIT_PX = 9;
 const MARKER_HIT_HALF_W = 16;
 const MARKER_HIT_H = 44;
+const MARKER_PIN_WIDTH = 27;
+const MARKER_PIN_HEIGHT = 40;
+const MARKER_LABEL_OFFSET_Y = 56;
+const PATH_LABEL_OFFSET_Y = 8;
+const LABEL_NUDGE_Y = 6;
+const LABEL_ESTIMATE_HEIGHT = 24;
+const LABEL_CHAR_WIDTH = 7;
+const LABEL_PAD_X = 16;
+const LABEL_MAX_WIDTH = 220;
+const LABEL_MIN_WIDTH = 40;
 
 export function distanceToSegment(
   point: MapPoint,
@@ -270,4 +281,173 @@ export function idsInScreenRect(
       return bounds != null && screenRectsOverlap(rect, bounds);
     })
     .map((annotation) => annotation.id);
+}
+
+export function unionScreenRects(
+  rects: Array<ScreenRect | null | undefined>,
+): ScreenRect | null {
+  const boxes = rects.filter(
+    (rect): rect is ScreenRect =>
+      rect != null &&
+      Number.isFinite(rect.width) &&
+      Number.isFinite(rect.height),
+  );
+  if (boxes.length === 0) return null;
+  let minX = boxes[0].x;
+  let minY = boxes[0].y;
+  let maxX = boxes[0].x + boxes[0].width;
+  let maxY = boxes[0].y + boxes[0].height;
+  for (const box of boxes.slice(1)) {
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+    maxX = Math.max(maxX, box.x + box.width);
+    maxY = Math.max(maxY, box.y + box.height);
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
+export function padScreenRect(rect: ScreenRect, pad: number): ScreenRect {
+  return {
+    x: rect.x - pad,
+    y: rect.y - pad,
+    width: rect.width + pad * 2,
+    height: rect.height + pad * 2,
+  };
+}
+
+function estimateLabelWidth(label: string): number {
+  return Math.min(
+    LABEL_MAX_WIDTH,
+    Math.max(LABEL_MIN_WIDTH, label.length * LABEL_CHAR_WIDTH + LABEL_PAD_X),
+  );
+}
+
+export function estimatedLabelScreenBounds(
+  project: (lngLat: { lng: number; lat: number }) => MapPoint,
+  annotation: Annotation,
+): ScreenRect | null {
+  if (isTextAnnotation(annotation)) return null;
+  const label = annotation.label.trim();
+  if (!label) return null;
+  const anchor = labelAnchor(annotation);
+  if (!anchor) return null;
+  const point = project({ lng: anchor[0], lat: anchor[1] });
+  const width = estimateLabelWidth(label);
+  if (isAreaAnnotation(annotation)) {
+    return {
+      x: point.x - width / 2,
+      y: point.y - LABEL_ESTIMATE_HEIGHT / 2,
+      width,
+      height: LABEL_ESTIMATE_HEIGHT,
+    };
+  }
+  const offsetY = isMarkerAnnotation(annotation)
+    ? MARKER_LABEL_OFFSET_Y
+    : PATH_LABEL_OFFSET_Y;
+  return {
+    x: point.x - width / 2,
+    y: point.y - offsetY - LABEL_NUDGE_Y - LABEL_ESTIMATE_HEIGHT,
+    width,
+    height: LABEL_ESTIMATE_HEIGHT,
+  };
+}
+
+export function annotationVisualScreenBounds(
+  project: (lngLat: { lng: number; lat: number }) => MapPoint,
+  annotation: Annotation,
+  includeLabels = true,
+): ScreenRect | null {
+  if (isTextAnnotation(annotation)) {
+    return annotationScreenBounds(project, annotation);
+  }
+  if (isMarkerAnnotation(annotation)) {
+    const tip = project({
+      lng: annotation.coordinate[0],
+      lat: annotation.coordinate[1],
+    });
+    const pin: ScreenRect = {
+      x: tip.x - MARKER_PIN_WIDTH / 2,
+      y: tip.y - MARKER_PIN_HEIGHT,
+      width: MARKER_PIN_WIDTH,
+      height: MARKER_PIN_HEIGHT,
+    };
+    return unionScreenRects([
+      pin,
+      includeLabels ? estimatedLabelScreenBounds(project, annotation) : null,
+    ]);
+  }
+  return unionScreenRects([
+    annotationScreenBounds(project, annotation),
+    includeLabels ? estimatedLabelScreenBounds(project, annotation) : null,
+  ]);
+}
+
+export function groupVisualScreenBounds(
+  project: (lngLat: { lng: number; lat: number }) => MapPoint,
+  members: Annotation[],
+  overlayRects: ScreenRect[] = [],
+  options?: { includeLabels?: boolean },
+): ScreenRect | null {
+  if (members.length < 2) return null;
+  const includeLabels = options?.includeLabels !== false;
+  return unionScreenRects([
+    ...members.map((annotation) =>
+      annotationVisualScreenBounds(project, annotation, includeLabels),
+    ),
+    ...overlayRects,
+  ]);
+}
+
+function escapeAttrSelector(value: string): string {
+  return typeof CSS !== "undefined" && typeof CSS.escape === "function"
+    ? CSS.escape(value)
+    : value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function clientRectRelativeToHost(element: Element, host: Element): ScreenRect {
+  const box = element.getBoundingClientRect();
+  const origin = host.getBoundingClientRect();
+  return {
+    x: box.left - origin.left,
+    y: box.top - origin.top,
+    width: box.width,
+    height: box.height,
+  };
+}
+
+const OVERLAY_LABEL_ATTRS = [
+  "data-rma-marker",
+  "data-rma-label",
+  "data-rma-text",
+] as const;
+const OVERLAY_BODY_ATTRS = ["data-rma-marker", "data-rma-text"] as const;
+
+export function overlayVisualRects(
+  host: Element,
+  ids: string[],
+  includeLabels = true,
+): ScreenRect[] {
+  const attrs = includeLabels ? OVERLAY_LABEL_ATTRS : OVERLAY_BODY_ATTRS;
+  const scopes: ParentNode[] = [host];
+  if (host.parentElement) scopes.push(host.parentElement);
+  const rects: ScreenRect[] = [];
+  const seen = new Set<Element>();
+  for (const id of ids) {
+    const escaped = escapeAttrSelector(id);
+    const selector = attrs.map((attr) => `[${attr}="${escaped}"]`).join(",");
+    for (const scope of scopes) {
+      for (const node of scope.querySelectorAll(selector)) {
+        if (seen.has(node)) continue;
+        seen.add(node);
+        const rect = clientRectRelativeToHost(node, host);
+        if (rect.width > 0 && rect.height > 0) rects.push(rect);
+      }
+    }
+  }
+  return rects;
 }

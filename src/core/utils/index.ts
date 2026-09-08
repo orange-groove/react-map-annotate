@@ -107,7 +107,19 @@ export {
 } from "./features";
 export type { ArrowMarker, AnnotationFeatures } from "./features";
 
-export { hitTestAnnotations, distanceToSegment, pointInRing, idsInScreenRect, screenRectFromPoints } from "./hit-test";
+export {
+  hitTestAnnotations,
+  distanceToSegment,
+  pointInRing,
+  idsInScreenRect,
+  screenRectFromPoints,
+  unionScreenRects,
+  padScreenRect,
+  estimatedLabelScreenBounds,
+  annotationVisualScreenBounds,
+  groupVisualScreenBounds,
+  overlayVisualRects,
+} from "./hit-test";
 export type { ScreenRect } from "./hit-test";
 
 export {
@@ -124,6 +136,8 @@ export {
   remapPastedGroupIds,
   isAdditiveSelect,
   idIsSelected,
+  isSingleEditSelection,
+  editHandleAnnotationId,
 } from "./selection";
 
 export {

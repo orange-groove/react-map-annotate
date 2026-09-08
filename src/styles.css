@@ -582,6 +582,14 @@ html.rma-dragging * {
   color: #b91c1c;
 }
 
+.rma-group-bounds {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.25px dashed currentColor;
+  pointer-events: none;
+  z-index: 18;
+}
+
 .rma-marquee {
   position: absolute;
   box-sizing: border-box;

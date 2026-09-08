@@ -44,7 +44,12 @@ export function hitAnnotationId(
   const layers = SELECTABLE_LAYER_IDS.filter((id) => Boolean(map.getLayer(id)));
   if (layers.length > 0) {
     const id = map.queryRenderedFeatures(point, { layers })[0]?.properties?.id;
-    if (typeof id === "string" && id !== "draft" && !id.startsWith("draft-")) {
+    if (
+      typeof id === "string" &&
+      id !== "draft" &&
+      !id.startsWith("draft-") &&
+      !id.startsWith("group-")
+    ) {
       return id;
     }
   }

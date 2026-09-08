@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { DEFAULT_COLOR, HANDLE_HIT_PX } from "../core/constants";
 import { useMapGl } from "../engines/kit/context";
 import type { Annotation, LngLat, SelectOptions } from "../core/types";
@@ -88,6 +88,7 @@ function HandleMarker({
   label,
   selected,
   onUpdate,
+  onDragStart,
   onDragEnd,
   onSelect,
   onRemove,
@@ -99,6 +100,7 @@ function HandleMarker({
   selected: boolean;
   onUpdate?: (annotation: Annotation) => void;
   onDragEnd?: () => void;
+  onDragStart?: () => void;
   onSelect?: (options?: SelectOptions) => void;
   onRemove?: () => void;
 }) {
@@ -117,6 +119,7 @@ function HandleMarker({
       return;
     }
     originRef.current = annotation;
+    onDragStart?.();
     onSelect?.();
     startHandleDrag(
       event,
@@ -194,9 +197,11 @@ export function EditHandles({
   const maps = useMap();
   const map = maps.current?.getMap();
   const session = useOptionalAnnotate();
+  const [dragId, setDragId] = useState<string | null>(null);
+  const visibleId = dragId ?? activeId;
 
-  if (!activeId) return null;
-  const annotation = annotations.find((item) => item.id === activeId);
+  if (!visibleId) return null;
+  const annotation = annotations.find((item) => item.id === visibleId);
   if (!annotation) return null;
   const color = annotation.style?.color ?? defaultColor;
 
@@ -234,7 +239,13 @@ export function EditHandles({
             );
           }}
           onUpdate={onUpdate}
-          onDragEnd={() => onDragEnd?.(annotation.id)}
+          onDragStart={() => {
+            setDragId(annotation.id);
+          }}
+          onDragEnd={() => {
+            setDragId(null);
+            onDragEnd?.(annotation.id);
+          }}
           onRemove={
             handle.kind === "vertex"
               ? () => session?.removeSelected()

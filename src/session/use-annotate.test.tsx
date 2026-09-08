@@ -249,7 +249,8 @@ describe("useAnnotate", () => {
     act(() => {
       result.current.setSelectedId("m1");
     });
-    expect(result.current.selectedIds).toEqual(["m1", "l1"]);
+    expect(result.current.selectedIds).toEqual(["l1", "m1"]);
+    expect(result.current.selectedId).toBe("m1");
     act(() => {
       result.current.removeSelected();
     });

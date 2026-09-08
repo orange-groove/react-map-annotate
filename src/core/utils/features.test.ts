@@ -199,4 +199,29 @@ describe("buildAnnotationFeatures", () => {
     expect(features.bounds.features[0]?.properties?.kind).toBe("bounds");
     expect(features.bounds.features[0]?.properties?.id).toBe("draw");
   });
+
+  it("does not emit a geographic group box; hover bounds are screen-space", () => {
+    const grouped: Annotation[] = [
+      { ...make("line", [origin, edge]), groupId: "g1" },
+      { ...make("marker", [third]), groupId: "g1" },
+      make("circle", [origin, edge]),
+    ];
+    const hovered = buildAnnotationFeatures({
+      annotations: grouped,
+      hoveredId: grouped[0]?.id,
+    });
+    expect(hovered.bounds.features).toHaveLength(0);
+  });
+
+  it("does not show a drawing box when the hovered drawing is grouped", () => {
+    const grouped: Annotation[] = [
+      { ...make("draw", [origin, edge, third]), groupId: "g1" },
+      { ...make("line", [origin, edge]), groupId: "g1" },
+    ];
+    const hovered = buildAnnotationFeatures({
+      annotations: grouped,
+      hoveredId: "draw",
+    });
+    expect(hovered.bounds.features).toHaveLength(0);
+  });
 });

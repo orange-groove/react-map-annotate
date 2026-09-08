@@ -50,7 +50,11 @@ function sourceIsAdditive(source: {
 export function isAdditiveSelect(event?: unknown): boolean {
   if (!event || typeof event !== "object") return false;
   const record = event as Record<string, unknown>;
-  if (sourceIsAdditive(record as { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean })) {
+  if (
+    sourceIsAdditive(
+      record as { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean },
+    )
+  ) {
     return true;
   }
   const native = modifierSource(event);
@@ -66,22 +70,53 @@ export function idIsSelected(
   return id === selectedId;
 }
 
+export function isSingleEditSelection(
+  annotations: Annotation[],
+  ids?: string[],
+): boolean {
+  if (!ids || ids.length <= 1) return true;
+  const selected = annotations.filter((item) => ids.includes(item.id));
+  if (selected.length <= 1) return true;
+  const groupId = selected[0]?.groupId;
+  return Boolean(groupId) && selected.every((item) => item.groupId === groupId);
+}
+
+export function editHandleAnnotationId(
+  annotations: Annotation[],
+  options: {
+    draft?: unknown;
+    selectedIds?: string[];
+    hoveredId?: string | null;
+    selectedId?: string | null;
+  },
+): string | null {
+  if (options.draft) return null;
+  if (!isSingleEditSelection(annotations, options.selectedIds)) return null;
+  return options.hoveredId ?? options.selectedId ?? null;
+}
+
 export function expandGroupIds(
   annotations: Annotation[],
   ids: string[],
 ): string[] {
-  const wanted = new Set(ids);
+  const wanted = uniqueIds(ids);
+  const wantedSet = new Set(wanted);
   const groups = new Set(
     annotations
-      .filter((item) => wanted.has(item.id) && item.groupId)
+      .filter((item) => wantedSet.has(item.id) && item.groupId)
       .map((item) => item.groupId as string),
   );
-  if (groups.size === 0) return uniqueIds(ids);
-  return annotations
+  if (groups.size === 0) return wanted;
+  const expanded = annotations
     .filter(
-      (item) => wanted.has(item.id) || (item.groupId && groups.has(item.groupId)),
+      (item) =>
+        wantedSet.has(item.id) || (item.groupId && groups.has(item.groupId)),
     )
     .map((item) => item.id);
+  const expandedSet = new Set(expanded);
+  const extras = expanded.filter((id) => !wantedSet.has(id));
+  const requested = wanted.filter((id) => expandedSet.has(id));
+  return [...extras, ...requested];
 }
 
 export function toggleSelectedIds(

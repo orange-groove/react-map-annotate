@@ -11,7 +11,7 @@ import {
   isTextAnnotation,
   labelAnchor,
 } from "../core/utils/annotations";
-import { idIsSelected } from "../core/utils/selection";
+import { idIsSelected, editHandleAnnotationId } from "../core/utils/selection";
 import type { ArrowMarker } from "../core/utils/features";
 import { useMapGl } from "../engines/kit/context";
 import { useOptionalAnnotate } from "../session/annotate-context";
@@ -63,8 +63,12 @@ export function AnnotateChrome({
   const { Marker } = useMapGl();
   const session = useOptionalAnnotate();
   const selectedIds = selectedIdsProp ?? session?.selectedIds;
-  const multi = (selectedIds?.length ?? 0) > 1;
-  const handleId = draft || multi ? null : (hoveredId ?? selectedId ?? null);
+  const handleId = editHandleAnnotationId(annotations ?? [], {
+    draft,
+    selectedIds,
+    hoveredId,
+    selectedId,
+  });
 
   return (
     <>
@@ -111,11 +115,7 @@ export function AnnotateChrome({
             key={`text-${annotation.id}`}
             annotation={annotation}
             selected={idIsSelected(annotation.id, selectedIds, selectedId)}
-            active={
-              !multi &&
-              (idIsSelected(annotation.id, selectedIds, selectedId) ||
-                hoveredId === annotation.id)
-            }
+            active={handleId === annotation.id}
             color={color}
             editable={labelsEditable ?? true}
             annotations={annotations ?? []}

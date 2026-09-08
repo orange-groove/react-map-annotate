@@ -374,7 +374,8 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
   With the Select tool, drag a dotted rectangle to select everything inside
   (Shift-drag adds to the selection). Click Select again, or press Finish /
   Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
-  the rest. Drag a selected shape to move the whole selection. Vertex handles
+  the rest. Hover a grouped annotation to see a dotted box around the group.
+  Drag a selected shape to move the whole selection. Vertex handles
   stay hidden while more than one item is selected.
   ⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
   redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,

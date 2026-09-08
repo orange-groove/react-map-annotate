@@ -3,6 +3,12 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.9
+
+- Hovering a grouped annotation draws a dotted box around pins, labels, and
+  geometry, not just coordinate tips.
+- Resize handles stay visible when dragging a shape inside a group.
+
 ## 0.3.8
 
 - Clicking empty map deselects, in pan and Select.

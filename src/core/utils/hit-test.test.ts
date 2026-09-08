@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { Annotation } from "../types";
-import { distanceToSegment, hitTestAnnotations, idsInScreenRect, pointInRing } from "./hit-test";
+import {
+  annotationVisualScreenBounds,
+  distanceToSegment,
+  groupVisualScreenBounds,
+  hitTestAnnotations,
+  idsInScreenRect,
+  overlayVisualRects,
+  padScreenRect,
+  pointInRing,
+  unionScreenRects,
+} from "./hit-test";
 
 describe("distanceToSegment", () => {
   it("measures a perpendicular drop to the segment", () => {
@@ -151,5 +161,142 @@ describe("idsInScreenRect", () => {
     expect(
       idsInScreenRect(project, { x: 0, y: 0, width: 2, height: 2 }, []),
     ).toEqual([]);
+  });
+});
+
+describe("group visual screen bounds", () => {
+  const project = ({ lng, lat }: { lng: number; lat: number }) => ({
+    x: lng * 100,
+    y: lat * 100,
+  });
+
+  it("unions and pads rectangles", () => {
+    expect(
+      unionScreenRects([
+        { x: 0, y: 0, width: 10, height: 10 },
+        { x: 8, y: -4, width: 10, height: 6 },
+      ]),
+    ).toEqual({ x: 0, y: -4, width: 18, height: 14 });
+    expect(padScreenRect({ x: 10, y: 20, width: 8, height: 6 }, 4)).toEqual({
+      x: 6,
+      y: 16,
+      width: 16,
+      height: 14,
+    });
+  });
+
+  it("wraps a marker pin and its label, not just the tip", () => {
+    const marker: Annotation = {
+      id: "pin-1",
+      kind: "marker",
+      label: "Marker",
+      coordinate: [1, 1],
+    };
+    const bounds = annotationVisualScreenBounds(project, marker);
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeLessThan(100);
+    expect(bounds!.x + bounds!.width).toBeGreaterThan(100);
+    expect(bounds!.y).toBeLessThan(100 - 40);
+    expect(bounds!.y + bounds!.height).toBe(100);
+  });
+
+  it("unions grouped markers so the box covers pins and labels", () => {
+    const left: Annotation = {
+      id: "a",
+      kind: "marker",
+      label: "Marker",
+      coordinate: [0, 0],
+      groupId: "g1",
+    };
+    const right: Annotation = {
+      id: "b",
+      kind: "marker",
+      label: "Marker",
+      coordinate: [1, 0],
+      groupId: "g1",
+    };
+    const bounds = groupVisualScreenBounds(project, [left, right]);
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThan(100);
+    expect(bounds!.height).toBeGreaterThan(40);
+    expect(bounds!.y + bounds!.height).toBe(0);
+    expect(bounds!.y).toBeLessThan(-40);
+  });
+
+  it("expands the group box with overlay pin and label rects", () => {
+    const left: Annotation = {
+      id: "a",
+      kind: "marker",
+      label: "Marker",
+      coordinate: [0, 0],
+      groupId: "g1",
+    };
+    const right: Annotation = {
+      id: "b",
+      kind: "marker",
+      label: "Marker",
+      coordinate: [1, 0],
+      groupId: "g1",
+    };
+    const estimated = groupVisualScreenBounds(project, [left, right]);
+    const overlay = groupVisualScreenBounds(
+      project,
+      [left, right],
+      [
+        { x: -20, y: -90, width: 40, height: 20 },
+        { x: 80, y: -90, width: 40, height: 20 },
+      ],
+    );
+    expect(overlay!.y).toBeLessThan(estimated!.y);
+    expect(overlay!.height).toBeGreaterThan(estimated!.height);
+  });
+
+  it("reads overlay pin and label boxes relative to the map host", () => {
+    const host = document.createElement("div");
+    host.getBoundingClientRect = () =>
+      ({
+        left: 10,
+        top: 20,
+        width: 400,
+        height: 300,
+        right: 410,
+        bottom: 320,
+        x: 10,
+        y: 20,
+        toJSON: () => undefined,
+      }) as DOMRect;
+    const pin = document.createElement("div");
+    pin.setAttribute("data-rma-marker", "a");
+    pin.getBoundingClientRect = () =>
+      ({
+        left: 40,
+        top: 80,
+        width: 27,
+        height: 40,
+        right: 67,
+        bottom: 120,
+        x: 40,
+        y: 80,
+        toJSON: () => undefined,
+      }) as DOMRect;
+    const label = document.createElement("div");
+    label.setAttribute("data-rma-label", "a");
+    label.getBoundingClientRect = () =>
+      ({
+        left: 30,
+        top: 50,
+        width: 48,
+        height: 22,
+        right: 78,
+        bottom: 72,
+        x: 30,
+        y: 50,
+        toJSON: () => undefined,
+      }) as DOMRect;
+    host.append(pin, label);
+    expect(overlayVisualRects(host, ["a"])).toEqual([
+      { x: 30, y: 60, width: 27, height: 40 },
+      { x: 20, y: 30, width: 48, height: 22 },
+    ]);
   });
 });
