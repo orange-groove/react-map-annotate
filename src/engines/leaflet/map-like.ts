@@ -24,6 +24,7 @@ function createLeafletMapLike(map: LeafletMap): MapLike {
     (event: MapPointerEvent) => void,
     Array<{ type: string; handler: L.LeafletEventHandlerFn }>
   >();
+  const moveListeners = new Set<(event: MapPointerEvent) => void>();
 
   const like: MapLike = {
     project(lngLat: MapLngLat): MapPoint {
@@ -62,6 +63,7 @@ function createLeafletMapLike(map: LeafletMap): MapLike {
       isEnabled: () => map.boxZoom.enabled(),
     },
     on: (type, listener) => {
+      if (type === "mousemove") moveListeners.add(listener);
       const handler: L.LeafletEventHandlerFn = (event) => {
         if (POINTER_EVENTS.has(type)) {
           const mouse = event as L.LeafletMouseEvent;
@@ -91,7 +93,8 @@ function createLeafletMapLike(map: LeafletMap): MapLike {
       current.push({ type, handler });
       listenerEntries.set(listener, current);
     },
-    off: (_type, listener) => {
+    off: (type, listener) => {
+      if (type === "mousemove") moveListeners.delete(listener);
       const current = listenerEntries.get(listener);
       if (!current) return;
       for (const entry of current) {
@@ -100,6 +103,28 @@ function createLeafletMapLike(map: LeafletMap): MapLike {
       listenerEntries.delete(listener);
     },
   };
+
+  map.getContainer().addEventListener(
+    "pointermove",
+    (event) => {
+      if (moveListeners.size === 0) return;
+      const rect = map.getContainer().getBoundingClientRect();
+      const point = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+      const latLng = map.containerPointToLatLng([point.x, point.y]);
+      const next: MapPointerEvent = {
+        originalEvent: event as unknown as MouseEvent,
+        point,
+        lngLat: { lng: latLng.lng, lat: latLng.lat },
+        preventDefault: () => event.preventDefault(),
+        target: like,
+      };
+      for (const listener of moveListeners) listener(next);
+    },
+    true,
+  );
 
   return like;
 }

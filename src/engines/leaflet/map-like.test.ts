@@ -85,4 +85,38 @@ describe("getLeafletMapLike", () => {
     });
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it("forwards container pointermove to mousemove listeners", () => {
+    const map = fakeLeafletMap();
+    const like = getLeafletMapLike(map as never);
+    const listener = vi.fn();
+    like.on("mousemove", listener);
+    map.getContainer().getBoundingClientRect = () =>
+      ({
+        left: 10,
+        top: 20,
+        width: 400,
+        height: 300,
+        right: 410,
+        bottom: 320,
+        x: 10,
+        y: 20,
+        toJSON: () => undefined,
+      }) as DOMRect;
+    map
+      .getContainer()
+      .dispatchEvent(
+        new PointerEvent("pointermove", {
+          clientX: 22,
+          clientY: 28,
+          bubbles: true,
+        }),
+      );
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        point: { x: 12, y: 8 },
+        lngLat: { lng: 1.2, lat: 0.8 },
+      }),
+    );
+  });
 });

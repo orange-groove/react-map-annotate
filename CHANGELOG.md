@@ -3,6 +3,10 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.10
+
+- Select marquee follows the pointer on Google Maps and draws on Leaflet.
+
 ## 0.3.9
 
 - Hovering a grouped annotation draws a dotted box around pins, labels, and

@@ -110,13 +110,18 @@ function applySelectedIds(
   else latest.onSelect?.(primary);
 }
 
+function toolLocksMapPan(tool: AnnotateTool) {
+  return tool === "select" || (isDrawingTool(tool) && !isTraceTool(tool));
+}
+
 function restorePanCursor(map: MapLike, tool: AnnotateTool) {
-  if (!isDrawingTool(tool) || isTraceTool(tool)) {
-    map.dragPan.enable();
-    setMapCursor(map, isTraceTool(tool) ? "crosshair" : "");
-  } else {
-    setMapCursor(map, "crosshair");
+  if (toolLocksMapPan(tool)) {
+    map.dragPan.disable();
+    setMapCursor(map, tool === "select" ? "" : "crosshair");
+    return;
   }
+  map.dragPan.enable();
+  setMapCursor(map, isTraceTool(tool) ? "crosshair" : "");
 }
 
 function disableNativeBoxZoom(map: MapLike): () => void {
@@ -273,20 +278,7 @@ export function useMapDrawing({
         return;
       }
 
-      const drawing =
-        isDrawingTool(latestRef.current.tool) &&
-        !isTraceTool(latestRef.current.tool);
-
-      if (drawing) {
-        map.dragPan.disable();
-        setMapCursor(map, "crosshair");
-      } else if (isTraceTool(latestRef.current.tool)) {
-        map.dragPan.enable();
-        setMapCursor(map, "crosshair");
-      } else {
-        map.dragPan.enable();
-        setMapCursor(map, "");
-      }
+      restorePanCursor(map, latestRef.current.tool);
 
       const restoreBoxZoom = disableNativeBoxZoom(map);
 
