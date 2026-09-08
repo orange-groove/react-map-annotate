@@ -10,6 +10,7 @@ import {
   isTraceTool,
   isIdleTool,
   toggleAnnotateTool,
+  emptyClickClearsSelection,
 } from "./constants";
 
 describe("tool helpers", () => {
@@ -45,6 +46,16 @@ describe("tool helpers", () => {
     expect(toggleAnnotateTool("select", "select")).toBe("pan");
     expect(toggleAnnotateTool("pan", "select")).toBe("select");
     expect(toggleAnnotateTool("line", "polygon")).toBe("polygon");
+  });
+
+  it("clears selection on an empty pan or select click", () => {
+    expect(emptyClickClearsSelection("pan")).toBe(true);
+    expect(emptyClickClearsSelection("select")).toBe(true);
+    expect(emptyClickClearsSelection("pan", true)).toBe(false);
+    expect(emptyClickClearsSelection("polygon")).toBe(false);
+    expect(emptyClickClearsSelection("pan", false, { kind: "line" })).toBe(
+      false,
+    );
   });
 });
 

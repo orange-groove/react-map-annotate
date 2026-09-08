@@ -46,6 +46,7 @@ export {
   isDrawingTool,
   isIdleTool,
   toggleAnnotateTool,
+  emptyClickClearsSelection,
   isDragTool,
   isClickVertexTool,
   isPointTool,

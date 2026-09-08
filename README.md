@@ -293,7 +293,7 @@ const trace: TraceFn = async (lngLat) => {
 <MapContainer center={[40.7484, -73.9857]} zoom={16}>
   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
   <Annotate trace={trace} />
-</MapContainer>
+</MapContainer>;
 ```
 
 Same prop on `/google` and `/arcgis`. `lookupRoadOrBuilding` is yours: fetch
@@ -370,7 +370,7 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
   lines, arrows, and measures. Vertices resize polygons and rectangles. A
   diagonal handle resizes circles. Hollow mid-edge handles insert vertices on
   polygons and paths. Double-click a vertex (or select it and press Delete) to
-  remove it. Shift-click or ⌘/Ctrl-click to select more than one annotation.
+  remove it. Click empty map to deselect. Shift-click or ⌘/Ctrl-click to select more than one annotation.
   With the Select tool, drag a dotted rectangle to select everything inside
   (Shift-drag adds to the selection). Click Select again, or press Finish /
   Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects

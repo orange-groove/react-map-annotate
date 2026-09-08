@@ -164,6 +164,14 @@ export function isDrawingTool(tool: AnnotateTool | undefined): boolean {
   return tool != null && tool !== "select" && tool !== IDLE_TOOL;
 }
 
+export function emptyClickClearsSelection(
+  tool: AnnotateTool | undefined,
+  additive = false,
+  draft: unknown = null,
+): boolean {
+  return !isDrawingTool(tool) && !additive && draft == null;
+}
+
 export function toggleAnnotateTool(
   current: AnnotateTool | undefined,
   next: AnnotateTool,

@@ -3,6 +3,10 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.8
+
+- Clicking empty map deselects, in pan and Select.
+
 ## 0.3.7
 
 - Select tool with a marquee; Shift-drag adds to the selection. Click Select

@@ -6,6 +6,7 @@ import {
   isDrawingTool,
   isPointTool,
   isTraceTool,
+  emptyClickClearsSelection,
 } from "../core/constants";
 import type {
   AnnotateTool,
@@ -564,6 +565,11 @@ export function useMapDrawing({
         restorePanCursor(map, latestRef.current.tool);
         setPointerCursor(null);
         if (rect.width < MARQUEE_MIN_PX && rect.height < MARQUEE_MIN_PX) {
+          if (
+            emptyClickClearsSelection(latestRef.current.tool, drag.additive)
+          ) {
+            applySelectedIds(latestRef.current, []);
+          }
           return false;
         }
         suppressClickRef.current = true;
@@ -574,7 +580,11 @@ export function useMapDrawing({
           items,
         );
         const next = drag.additive
-          ? unionSelectedIds(items, currentSelectedIds(latestRef.current), hitIds)
+          ? unionSelectedIds(
+              items,
+              currentSelectedIds(latestRef.current),
+              hitIds,
+            )
           : expandGroupIds(items, hitIds);
         applySelectedIds(latestRef.current, next, drag.additive);
         return true;
@@ -681,12 +691,10 @@ export function useMapDrawing({
           return;
         }
 
-        if (activeTool === "select") {
-          if (latestRef.current.setSelectedIds) {
-            latestRef.current.setSelectedIds([]);
-          } else {
-            latestRef.current.onSelect?.(null);
-          }
+        if (
+          emptyClickClearsSelection(activeTool, eventIsAdditive(event), current)
+        ) {
+          applySelectedIds(latestRef.current, []);
           return;
         }
 
