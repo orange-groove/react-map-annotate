@@ -97,8 +97,14 @@
 
 .rma-marker-hit {
   display: block;
+  width: max-content;
+  height: max-content;
   cursor: grab;
   pointer-events: auto;
+}
+
+.rma-marker-hit svg {
+  pointer-events: none;
 }
 
 .rma-marker-hit:active {
@@ -574,4 +580,13 @@ html.rma-dragging * {
 .rma-menu-item--danger:hover:not(:disabled) {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.rma-marquee {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed #2563eb;
+  background: rgba(37, 99, 235, 0.12);
+  pointer-events: none;
+  z-index: 20;
 }

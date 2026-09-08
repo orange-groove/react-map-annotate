@@ -94,6 +94,7 @@ export const CLICK_VERTEX_TOOLS: AnnotationKind[] = [
 export const DRAG_TOOLS: AnnotationKind[] = ["draw", "circle", "rectangle"];
 
 export const DEFAULT_TOOLBAR_TOOLS: AnnotateTool[] = [
+  "select",
   "draw",
   "trace",
   "line",
@@ -107,7 +108,10 @@ export const DEFAULT_TOOLBAR_TOOLS: AnnotateTool[] = [
   "text",
 ];
 
+export const IDLE_TOOL: AnnotateTool = "pan";
+
 export const TOOL_LABELS: Record<AnnotateTool, string> = {
+  pan: "Pan",
   select: "Select",
   draw: "Freehand",
   trace: "Trace",
@@ -152,8 +156,19 @@ export const TEXT_FONT_OPTIONS = TEXT_FONTS.map((font) => ({
   label: font.label ?? font.family,
 }));
 
+export function isIdleTool(tool: AnnotateTool | undefined): boolean {
+  return tool == null || tool === IDLE_TOOL;
+}
+
 export function isDrawingTool(tool: AnnotateTool | undefined): boolean {
-  return tool != null && tool !== "select";
+  return tool != null && tool !== "select" && tool !== IDLE_TOOL;
+}
+
+export function toggleAnnotateTool(
+  current: AnnotateTool | undefined,
+  next: AnnotateTool,
+): AnnotateTool {
+  return current === next ? IDLE_TOOL : next;
 }
 
 export function isDragTool(

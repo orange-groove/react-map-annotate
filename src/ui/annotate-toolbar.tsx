@@ -2,7 +2,12 @@
 
 import { Check, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useOptionalAnnotate } from "../session/annotate-context";
-import { DEFAULT_TOOLBAR_TOOLS, TOOL_LABELS } from "../core/constants";
+import {
+  DEFAULT_TOOLBAR_TOOLS,
+  IDLE_TOOL,
+  TOOL_LABELS,
+  toggleAnnotateTool,
+} from "../core/constants";
 import type { AnnotateToolbarProps } from "../core/types";
 import { canPressFinish } from "../core/utils/annotations";
 import { AnnotateToolIcon } from "./tool-icon";
@@ -11,6 +16,7 @@ export function AnnotateToolbar({
   tool: toolProp,
   onToolChange: onToolChangeProp,
   selectedId: selectedIdProp,
+  selectedIds: selectedIdsProp,
   onDeleteSelected: onDeleteSelectedProp,
   onFinish: onFinishProp,
   canFinish: canFinishProp,
@@ -24,8 +30,10 @@ export function AnnotateToolbar({
   style,
 }: AnnotateToolbarProps) {
   const session = useOptionalAnnotate();
-  const tool = toolProp ?? session?.tool ?? "select";
+  const tool = toolProp ?? session?.tool ?? IDLE_TOOL;
   const selectedId = selectedIdProp ?? session?.selectedId ?? null;
+  const selectedIds = selectedIdsProp ?? session?.selectedIds ?? [];
+  const hasSelection = selectedIds.length > 0 || Boolean(selectedId);
   const onToolChange =
     onToolChangeProp ?? session?.setTool ?? (() => undefined);
   const onFinish = onFinishProp ?? session?.finish ?? (() => undefined);
@@ -57,7 +65,7 @@ export function AnnotateToolbar({
             aria-label={TOOL_LABELS[item]}
             aria-pressed={active}
             title={TOOL_LABELS[item]}
-            onClick={() => onToolChange(item)}
+            onClick={() => onToolChange(toggleAnnotateTool(tool, item))}
           >
             <AnnotateToolIcon tool={item} />
           </button>
@@ -103,7 +111,7 @@ export function AnnotateToolbar({
           className="rma-tool rma-tool--danger"
           aria-label="Delete selected annotation"
           title="Delete selected"
-          disabled={!selectedId}
+          disabled={!hasSelection}
           onClick={onDeleteSelected}
         >
           <Trash2 size={18} strokeWidth={1.8} aria-hidden />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Annotation } from "../types";
-import { distanceToSegment, hitTestAnnotations, pointInRing } from "./hit-test";
+import { distanceToSegment, hitTestAnnotations, idsInScreenRect, pointInRing } from "./hit-test";
 
 describe("distanceToSegment", () => {
   it("measures a perpendicular drop to the segment", () => {
@@ -81,6 +81,9 @@ describe("hitTestAnnotations", () => {
     expect(hitTestAnnotations(project, { x: 100, y: 80 }, [marker])).toBe(
       "pin-1",
     );
+    expect(hitTestAnnotations(project, { x: 100, y: 120 }, [marker])).toBe(
+      "pin-1",
+    );
     expect(
       hitTestAnnotations(project, { x: 100, y: 160 }, [marker]),
     ).toBeNull();
@@ -108,5 +111,45 @@ describe("hitTestAnnotations", () => {
     expect(hitTestAnnotations(project, { x: 50, y: 0 }, [line, other])).toBe(
       "line-2",
     );
+  });
+});
+
+describe("idsInScreenRect", () => {
+  const project = ({ lng, lat }: { lng: number; lat: number }) => ({
+    x: lng * 100,
+    y: lat * 100,
+  });
+
+  it("selects annotations whose bounds overlap the marquee", () => {
+    const line: Annotation = {
+      id: "line-1",
+      kind: "line",
+      label: "Line",
+      coordinates: [
+        [0, 0],
+        [1, 0],
+      ],
+    };
+    const far: Annotation = {
+      id: "line-2",
+      kind: "line",
+      label: "Far",
+      coordinates: [
+        [8, 8],
+        [9, 8],
+      ],
+    };
+    expect(
+      idsInScreenRect(project, { x: 0, y: -4, width: 120, height: 10 }, [
+        line,
+        far,
+      ]),
+    ).toEqual(["line-1"]);
+  });
+
+  it("ignores a tiny drag", () => {
+    expect(
+      idsInScreenRect(project, { x: 0, y: 0, width: 2, height: 2 }, []),
+    ).toEqual([]);
   });
 });

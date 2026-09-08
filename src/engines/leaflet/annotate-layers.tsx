@@ -11,6 +11,7 @@ export function LeafletAnnotateLayers({
   annotations = [],
   draft,
   selectedId,
+  selectedIds,
   hoveredId = null,
   defaultColor,
   defaultStrokeWidth,
@@ -29,6 +30,7 @@ export function LeafletAnnotateLayers({
   | "annotations"
   | "draft"
   | "selectedId"
+  | "selectedIds"
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
@@ -51,6 +53,7 @@ export function LeafletAnnotateLayers({
       annotations,
       draft,
       selectedId,
+      selectedIds,
       hoveredId,
       defaultColor: color,
       defaultStrokeWidth: strokeWidth,
@@ -151,6 +154,7 @@ export function LeafletAnnotateLayers({
         annotations={annotations}
         draft={draft}
         selectedId={selectedId}
+        selectedIds={selectedIds}
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}

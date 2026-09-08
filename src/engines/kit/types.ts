@@ -14,6 +14,7 @@ export type GlAnnotateLayersProps = Pick<
   | "annotations"
   | "draft"
   | "selectedId"
+  | "selectedIds"
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
@@ -72,6 +73,11 @@ export interface MapLike {
     enable: () => void;
     disable: () => void;
     isEnabled: () => boolean;
+  };
+  boxZoom?: {
+    enable: () => void;
+    disable: () => void;
+    isEnabled?: () => boolean;
   };
   on: (type: string, listener: (event: MapPointerEvent) => void) => void;
   off: (type: string, listener: (event: MapPointerEvent) => void) => void;

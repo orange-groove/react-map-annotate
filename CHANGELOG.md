@@ -3,6 +3,14 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.7
+
+- Select tool with a marquee; Shift-drag adds to the selection. Click Select
+  again, Finish, Enter, or Escape to return to pan so the map can move.
+- Multi-select, group / ungroup (⌘G / ⇧⌘G), and copy / paste of several
+  annotations at once.
+- Clicking a marker pin selects it, not only the label.
+
 ## 0.3.6
 
 - Stock toolbar and list icons use Lucide. Trace is Waypoints; the

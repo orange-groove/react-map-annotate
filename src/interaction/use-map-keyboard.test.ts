@@ -113,6 +113,46 @@ describe("handleMapKeyDown", () => {
     expect(duplicateSelected).toHaveBeenCalled();
   });
 
+  it("groups with Cmd+G and ungroups with Shift+Cmd+G", () => {
+    const groupSelected = vi.fn();
+    const ungroupSelected = vi.fn();
+    const group = new KeyboardEvent("keydown", {
+      key: "g",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    handleMapKeyDown(group, {
+      latest: latest({
+        selectedId: "a1",
+        selectedIds: ["a1", "a2"],
+        groupSelected,
+        ungroupSelected,
+      }),
+      finishDrawing: vi.fn(),
+    });
+    expect(group.defaultPrevented).toBe(true);
+    expect(groupSelected).toHaveBeenCalled();
+
+    const ungroup = new KeyboardEvent("keydown", {
+      key: "g",
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    handleMapKeyDown(ungroup, {
+      latest: latest({
+        selectedId: "a1",
+        selectedIds: ["a1", "a2"],
+        groupSelected,
+        ungroupSelected,
+      }),
+      finishDrawing: vi.fn(),
+    });
+    expect(ungroupSelected).toHaveBeenCalled();
+  });
+
   it("finishes when a drawing tool is active even without a draft", () => {
     const finishDrawing = vi.fn();
     handleMapKeyDown(key("Enter"), {
@@ -120,5 +160,19 @@ describe("handleMapKeyDown", () => {
       finishDrawing,
     });
     expect(finishDrawing).toHaveBeenCalled();
+  });
+
+  it("finishes the select tool with Enter or Escape", () => {
+    const finishDrawing = vi.fn();
+    handleMapKeyDown(key("Enter"), {
+      latest: latest({ tool: "select" }),
+      finishDrawing,
+    });
+    expect(finishDrawing).toHaveBeenCalledTimes(1);
+    handleMapKeyDown(key("Escape"), {
+      latest: latest({ tool: "select" }),
+      finishDrawing,
+    });
+    expect(finishDrawing).toHaveBeenCalledTimes(2);
   });
 });

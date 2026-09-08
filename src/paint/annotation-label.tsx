@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useMapGl } from "../engines/kit/context";
-import type { Annotation, LabelRenderProps } from "../core/types";
+import type { Annotation, LabelRenderProps, SelectOptions } from "../core/types";
+import { isAdditiveSelect } from "../core/utils/selection";
 import { annotationAreaMeters } from "../core/utils/annotations";
 import { formatArea } from "../core/utils/geo";
 
@@ -29,7 +30,7 @@ export function AnnotationLabel({
   markerAnchor?: "center" | "bottom";
   showLabel?: boolean;
   showArea?: boolean;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, options?: SelectOptions) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
   render?: (props: LabelRenderProps) => React.ReactNode;
 }) {
@@ -98,7 +99,11 @@ export function AnnotationLabel({
           data-rma-label={annotation.id}
           onPointerDown={(event) => {
             event.stopPropagation();
-            onSelect?.(annotation.id);
+            if (isAdditiveSelect(event)) {
+              onSelect?.(annotation.id, { additive: true });
+            } else {
+              onSelect?.(annotation.id);
+            }
           }}
         >
           {custom}
@@ -109,7 +114,11 @@ export function AnnotationLabel({
           className={labelClassName}
           onPointerDown={(event) => {
             event.stopPropagation();
-            onSelect?.(annotation.id);
+            if (isAdditiveSelect(event)) {
+              onSelect?.(annotation.id, { additive: true });
+            } else {
+              onSelect?.(annotation.id);
+            }
           }}
           onDoubleClick={(event) => {
             event.stopPropagation();
@@ -140,7 +149,6 @@ export function AnnotationLabel({
               className="rma-label-text"
               onClick={(event) => {
                 event.stopPropagation();
-                onSelect?.(annotation.id);
               }}
             >
               {annotation.label}

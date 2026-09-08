@@ -11,8 +11,10 @@ import {
   isTextAnnotation,
   labelAnchor,
 } from "../core/utils/annotations";
+import { idIsSelected } from "../core/utils/selection";
 import type { ArrowMarker } from "../core/utils/features";
 import { useMapGl } from "../engines/kit/context";
+import { useOptionalAnnotate } from "../session/annotate-context";
 import { AnnotationLabel } from "./annotation-label";
 import { AnnotationMarker } from "./annotation-marker";
 import { AnnotationText } from "./annotation-text";
@@ -23,6 +25,7 @@ export function AnnotateChrome({
   annotations,
   draft,
   selectedId,
+  selectedIds: selectedIdsProp,
   hoveredId,
   color,
   labelsEditable,
@@ -41,6 +44,7 @@ export function AnnotateChrome({
   | "annotations"
   | "draft"
   | "selectedId"
+  | "selectedIds"
   | "labelsEditable"
   | "showLabels"
   | "showArea"
@@ -57,7 +61,10 @@ export function AnnotateChrome({
   onHandleDragEnd?: (id: string) => void;
 }) {
   const { Marker } = useMapGl();
-  const handleId = draft ? null : (hoveredId ?? selectedId ?? null);
+  const session = useOptionalAnnotate();
+  const selectedIds = selectedIdsProp ?? session?.selectedIds;
+  const multi = (selectedIds?.length ?? 0) > 1;
+  const handleId = draft || multi ? null : (hoveredId ?? selectedId ?? null);
 
   return (
     <>
@@ -84,10 +91,13 @@ export function AnnotateChrome({
         <AnnotationMarker
           key={`marker-${annotation.id}`}
           annotation={annotation}
-          selected={selectedId === annotation.id}
+          selected={idIsSelected(annotation.id, selectedIds, selectedId)}
           color={color}
+          annotations={annotations ?? []}
+          selectedIds={selectedIds ?? []}
           onSelect={onSelect}
           onUpdate={onUpdate}
+          onUpdateMany={session?.onUpdateMany}
           onDragEnd={onHandleDragEnd}
         />
       ))}
@@ -100,12 +110,19 @@ export function AnnotateChrome({
           <AnnotationText
             key={`text-${annotation.id}`}
             annotation={annotation}
-            selected={selectedId === annotation.id}
-            active={selectedId === annotation.id || hoveredId === annotation.id}
+            selected={idIsSelected(annotation.id, selectedIds, selectedId)}
+            active={
+              !multi &&
+              (idIsSelected(annotation.id, selectedIds, selectedId) ||
+                hoveredId === annotation.id)
+            }
             color={color}
             editable={labelsEditable ?? true}
+            annotations={annotations ?? []}
+            selectedIds={selectedIds ?? []}
             onSelect={onSelect}
             onUpdate={onUpdate}
+            onUpdateMany={session?.onUpdateMany}
             onDragEnd={onHandleDragEnd}
             onLabelChange={onLabelChange}
           />
@@ -137,7 +154,7 @@ export function AnnotateChrome({
             annotation={annotation}
             longitude={anchor[0]}
             latitude={anchor[1]}
-            selected={annotation.id === selectedId}
+            selected={idIsSelected(annotation.id, selectedIds, selectedId)}
             editable={labelsEditable ?? true}
             showLabel={showLabels}
             showArea={showArea}

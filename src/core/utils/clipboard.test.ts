@@ -4,7 +4,9 @@ import {
   cloneAnnotation,
   duplicateAnnotationRight,
   parseAnnotationClipboard,
+  parseAnnotationClipboardItems,
   placeAnnotationAt,
+  placeAnnotationsAt,
   serializeAnnotationClipboard,
 } from "./clipboard";
 
@@ -50,6 +52,38 @@ describe("annotation clipboard", () => {
   it("rejects unrelated JSON", () => {
     expect(parseAnnotationClipboard('{"hello":true}')).toBeNull();
     expect(parseAnnotationClipboard("not-json")).toBeNull();
+  });
+
+  it("round-trips a set of annotations", () => {
+    const parsed = parseAnnotationClipboardItems(
+      serializeAnnotationClipboard([pin, line]),
+    );
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]).toMatchObject({ kind: "marker", label: "Pin" });
+    expect(parsed[1]).toMatchObject({ kind: "line", label: "Fence" });
+  });
+
+  it("still reads the v1 clipboard payload", () => {
+    const parsed = parseAnnotationClipboardItems(
+      JSON.stringify({ v: 1, annotation: pin }),
+    );
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]).toMatchObject({ kind: "marker", label: "Pin" });
+  });
+});
+
+describe("placeAnnotationsAt", () => {
+  it("moves the set together and remaps group ids", () => {
+    const groupedLine = { ...line, groupId: "g1" };
+    const groupedPin = { ...pin, groupId: "g1" };
+    const placed = placeAnnotationsAt([groupedPin, groupedLine], [-73.97, 40.76]);
+    expect(placed).toHaveLength(2);
+    expect(placed[0]?.id).not.toBe(pin.id);
+    expect(placed[0]?.groupId).toBeTruthy();
+    expect(placed[0]?.groupId).not.toBe("g1");
+    expect(placed[0]?.groupId).toBe(placed[1]?.groupId);
+    if (placed[0]?.kind !== "marker") throw new Error("expected marker");
+    expect(placed[0].coordinate).toEqual([-73.97, 40.76]);
   });
 });
 

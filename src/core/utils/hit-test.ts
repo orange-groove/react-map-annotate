@@ -91,8 +91,8 @@ function hitMarker(
 ): boolean {
   const tip = project({ lng: coordinate[0], lat: coordinate[1] });
   const dx = Math.abs(point.x - tip.x);
-  const dy = tip.y - point.y;
-  return dx <= MARKER_HIT_HALF_W && dy >= -4 && dy <= MARKER_HIT_H;
+  const dy = point.y - tip.y;
+  return dx <= MARKER_HIT_HALF_W && dy >= -MARKER_HIT_H && dy <= MARKER_HIT_H;
 }
 
 function hitText(
@@ -165,4 +165,109 @@ export function hitTestAnnotations(
   }
 
   return null;
+}
+
+export interface ScreenRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export const MARQUEE_MIN_PX = 4;
+
+export function screenRectFromPoints(a: MapPoint, b: MapPoint): ScreenRect {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.abs(b.x - a.x),
+    height: Math.abs(b.y - a.y),
+  };
+}
+
+export function screenRectsOverlap(a: ScreenRect, b: ScreenRect): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+function boundsFromPoints(points: MapPoint[]): ScreenRect | null {
+  if (points.length === 0) return null;
+  let minX = points[0].x;
+  let maxX = points[0].x;
+  let minY = points[0].y;
+  let maxY = points[0].y;
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+    minY = Math.min(minY, point.y);
+    maxY = Math.max(maxY, point.y);
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(maxX - minX, 1),
+    height: Math.max(maxY - minY, 1),
+  };
+}
+
+export function annotationScreenBounds(
+  project: (lngLat: { lng: number; lat: number }) => MapPoint,
+  annotation: Annotation,
+): ScreenRect | null {
+  if (isTextAnnotation(annotation)) {
+    const origin = project({
+      lng: annotation.coordinate[0],
+      lat: annotation.coordinate[1],
+    });
+    const { width, height } = textHitSize(annotation);
+    return {
+      x: origin.x - width / 2,
+      y: origin.y - height / 2,
+      width,
+      height,
+    };
+  }
+  if (isMarkerAnnotation(annotation)) {
+    const tip = project({
+      lng: annotation.coordinate[0],
+      lat: annotation.coordinate[1],
+    });
+    return {
+      x: tip.x - MARKER_HIT_HALF_W,
+      y: tip.y - MARKER_HIT_H,
+      width: MARKER_HIT_HALF_W * 2,
+      height: MARKER_HIT_H * 2,
+    };
+  }
+  const coordinates =
+    annotation.kind === "draw" || annotation.kind === "trace"
+      ? [...annotation.coordinates, ...drawBoundsRing(annotation)]
+      : "coordinates" in annotation
+        ? annotation.coordinates
+        : [];
+  return boundsFromPoints(
+    coordinates.map((coordinate) =>
+      project({ lng: coordinate[0], lat: coordinate[1] }),
+    ),
+  );
+}
+
+export function idsInScreenRect(
+  project: (lngLat: { lng: number; lat: number }) => MapPoint,
+  rect: ScreenRect,
+  annotations: Annotation[],
+): string[] {
+  if (rect.width < MARQUEE_MIN_PX && rect.height < MARQUEE_MIN_PX) return [];
+  return annotations
+    .filter((annotation) => {
+      const bounds = annotationScreenBounds(project, annotation);
+      return bounds != null && screenRectsOverlap(rect, bounds);
+    })
+    .map((annotation) => annotation.id);
 }

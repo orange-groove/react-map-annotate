@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TestMapGl } from "../test/map-gl";
@@ -197,5 +197,26 @@ describe("AnnotationLabel", () => {
     );
     expect(screen.getByText("custom:Route")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Route" })).toBeNull();
+  });
+
+  it("shift-clicks the label once instead of toggling twice", () => {
+    const onSelect = vi.fn();
+    render(
+      <TestMapGl>
+        <AnnotationLabel
+          annotation={annotation}
+          longitude={0}
+          latitude={0}
+          selected={false}
+          editable
+          onSelect={onSelect}
+        />
+      </TestMapGl>,
+    );
+    const label = screen.getByRole("button", { name: "Route" });
+    fireEvent.pointerDown(label, { shiftKey: true });
+    fireEvent.click(label, { shiftKey: true });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("line-1", { additive: true });
   });
 });

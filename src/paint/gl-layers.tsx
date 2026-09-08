@@ -15,6 +15,7 @@ export function AnnotateLayers({
   annotations = [],
   draft,
   selectedId,
+  selectedIds,
   hoveredId = null,
   defaultColor,
   defaultStrokeWidth,
@@ -33,6 +34,7 @@ export function AnnotateLayers({
   | "annotations"
   | "draft"
   | "selectedId"
+  | "selectedIds"
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
@@ -56,6 +58,7 @@ export function AnnotateLayers({
       annotations,
       draft,
       selectedId,
+      selectedIds,
       hoveredId,
       defaultColor: color,
       defaultStrokeWidth: strokeWidth,
@@ -200,6 +203,7 @@ export function AnnotateLayers({
         annotations={annotations}
         draft={draft}
         selectedId={selectedId}
+        selectedIds={selectedIds}
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}

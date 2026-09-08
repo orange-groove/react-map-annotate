@@ -10,7 +10,7 @@ describe("AnnotateToolbar", () => {
     expect(
       screen.getByRole("toolbar", { name: "Map annotation tools" }),
     ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Select" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Freehand" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Trace" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Line" })).toBeTruthy();
@@ -25,7 +25,7 @@ describe("AnnotateToolbar", () => {
     expect(screen.getByRole("button", { name: "Marker" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Text" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Finish drawing" })).toBeTruthy();
-    expect(DEFAULT_TOOLBAR_TOOLS).toHaveLength(11);
+    expect(DEFAULT_TOOLBAR_TOOLS).toHaveLength(12);
   });
 
   it("notifies the host when a tool is chosen", async () => {
@@ -34,6 +34,14 @@ describe("AnnotateToolbar", () => {
     render(<AnnotateToolbar tool="select" onToolChange={onToolChange} />);
     await user.click(screen.getByRole("button", { name: "Measure" }));
     expect(onToolChange).toHaveBeenCalledWith("measure");
+  });
+
+  it("exits the select tool when it is clicked again", async () => {
+    const onToolChange = vi.fn();
+    const user = userEvent.setup();
+    render(<AnnotateToolbar tool="select" onToolChange={onToolChange} />);
+    await user.click(screen.getByRole("button", { name: "Select" }));
+    expect(onToolChange).toHaveBeenCalledWith("pan");
   });
 
   it("deletes the selected annotation", async () => {

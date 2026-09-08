@@ -34,7 +34,7 @@ describe("useAnnotate", () => {
   it("starts from provider state", () => {
     const { result } = renderHook(() => useAnnotate(), { wrapper });
     expect(result.current.annotations).toEqual([marker]);
-    expect(result.current.tool).toBe("select");
+    expect(result.current.tool).toBe("pan");
     expect(result.current.draft).toBeNull();
     expect(result.current.showLabels).toBe(true);
     expect(result.current.showArea).toBe(true);
@@ -226,11 +226,81 @@ describe("useAnnotate", () => {
     expect(result.current.annotations[0].coordinates).toHaveLength(5);
   });
 
+  it("selects, groups, and deletes multiple annotations", () => {
+    const { result } = renderHook(() => useAnnotate(), { wrapper });
+    act(() => {
+      result.current.onAdd(line);
+    });
+    act(() => {
+      result.current.setSelectedIds(["m1", "l1"]);
+    });
+    expect(result.current.selectedIds).toEqual(["m1", "l1"]);
+    expect(result.current.canGroup).toBe(true);
+    act(() => {
+      result.current.groupSelected();
+    });
+    const groupId = result.current.annotations.find((item) => item.id === "m1")
+      ?.groupId;
+    expect(groupId).toBeTruthy();
+    expect(
+      result.current.annotations.find((item) => item.id === "l1")?.groupId,
+    ).toBe(groupId);
+    expect(result.current.canUngroup).toBe(true);
+    act(() => {
+      result.current.setSelectedId("m1");
+    });
+    expect(result.current.selectedIds).toEqual(["m1", "l1"]);
+    act(() => {
+      result.current.removeSelected();
+    });
+    expect(result.current.annotations).toEqual([]);
+  });
+
+  it("adds a pasted set in one history step", () => {
+    const { result } = renderHook(() => useAnnotate(), { wrapper });
+    act(() => {
+      result.current.onAddMany([
+        { ...line, id: "l2", label: "Copy A" },
+        {
+          id: "l3",
+          kind: "line",
+          label: "Copy B",
+          coordinates: [
+            [-73.7, 40.7],
+            [-73.6, 40.8],
+          ],
+        },
+      ]);
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual([
+      "m1",
+      "l2",
+      "l3",
+    ]);
+    expect(result.current.selectedIds).toEqual(["l2", "l3"]);
+    act(() => {
+      result.current.undo();
+    });
+    expect(result.current.annotations.map((item) => item.id)).toEqual(["m1"]);
+  });
+
   it("changes the active tool", () => {
     const { result } = renderHook(() => useAnnotate(), { wrapper });
     act(() => {
       result.current.setTool("polygon");
     });
     expect(result.current.tool).toBe("polygon");
+  });
+
+  it("returns to pan when finish is pressed", () => {
+    const { result } = renderHook(() => useAnnotate(), { wrapper });
+    act(() => {
+      result.current.setTool("select");
+    });
+    expect(result.current.tool).toBe("select");
+    act(() => {
+      result.current.finish();
+    });
+    expect(result.current.tool).toBe("pan");
   });
 });

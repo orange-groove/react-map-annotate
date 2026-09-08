@@ -24,6 +24,11 @@ function fakeLeafletMap() {
       },
       enabled: () => dragging,
     },
+    boxZoom: {
+      enable: () => undefined,
+      disable: () => undefined,
+      enabled: () => false,
+    },
     on(type: string, handler: (event: unknown) => void) {
       const set = handlers.get(type) ?? new Set();
       set.add(handler);

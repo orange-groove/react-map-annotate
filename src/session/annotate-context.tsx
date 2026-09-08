@@ -19,16 +19,29 @@ import type {
   AnnotationStyle,
   AnnotateTool,
   DraftAnnotation,
+  SelectOptions,
   TraceOption,
 } from "../core/types";
+import { IDLE_TOOL } from "../core/constants";
 import {
   canPressFinish,
   removeAnnotation,
+  removeAnnotations,
   setAnnotationColor,
   setAnnotationLabel,
   setAnnotationStyle,
   upsertAnnotation,
+  upsertAnnotations,
 } from "../core/utils/annotations";
+import {
+  canGroupAnnotations,
+  canUngroupAnnotations,
+  expandGroupIds,
+  groupAnnotations,
+  nextSelectedIds,
+  uniqueIds,
+  ungroupAnnotations,
+} from "../core/utils/selection";
 import {
   canRemoveVertex,
   editableVertices,
@@ -46,7 +59,9 @@ export interface AnnotateSession {
   tool: AnnotateTool;
   setTool: (tool: AnnotateTool) => void;
   selectedId: string | null;
-  setSelectedId: (id: string | null) => void;
+  selectedIds: string[];
+  setSelectedId: (id: string | null, options?: SelectOptions) => void;
+  setSelectedIds: (ids: string[]) => void;
   selectedVertexIndex: number | null;
   setSelectedVertexIndex: (index: number | null) => void;
   setLabel: (id: string, label: string) => void;
@@ -55,11 +70,13 @@ export interface AnnotateSession {
   fonts: AnnotateFont[];
   defaultFontFamily?: string;
   onAdd: (annotation: Annotation) => void;
+  onAddMany: (annotations: Annotation[]) => void;
   onUpdate: (annotation: Annotation) => void;
+  onUpdateMany: (annotations: Annotation[]) => void;
   onDelete: (id: string) => void;
   onDraftChange: (draft: DraftAnnotation | null) => void;
   onToolChange: (tool: AnnotateTool) => void;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string | null, options?: SelectOptions) => void;
   onLabelChange: (id: string, label: string, annotation: Annotation) => void;
   canFinish: boolean;
   finish: () => void;
@@ -71,6 +88,10 @@ export interface AnnotateSession {
   canUndo: boolean;
   canRedo: boolean;
   removeSelected: () => void;
+  groupSelected: () => void;
+  ungroupSelected: () => void;
+  canGroup: boolean;
+  canUngroup: boolean;
   showLabels: boolean;
   showArea: boolean;
   trace?: TraceOption;
@@ -84,6 +105,7 @@ export interface AnnotateProviderProps extends AnnotateCallbacks {
   draft?: DraftAnnotation | null;
   tool?: AnnotateTool;
   selectedId?: string | null;
+  selectedIds?: string[];
   onChange?: (annotations: Annotation[]) => void;
   fonts?: AnnotateFont[];
   defaultFontFamily?: string;
@@ -97,11 +119,12 @@ const AnnotateContext = createContext<AnnotateSession | null>(null);
 export function AnnotateProvider({
   children,
   initialAnnotations = [],
-  initialTool = "select",
+  initialTool = IDLE_TOOL,
   annotations: annotationsProp,
   draft: draftProp,
   tool: toolProp,
   selectedId: selectedIdProp,
+  selectedIds: selectedIdsProp,
   onChange,
   onAdd: onAddProp,
   onUpdate: onUpdateProp,
@@ -109,6 +132,7 @@ export function AnnotateProvider({
   onDraftChange: onDraftChangeProp,
   onToolChange: onToolChangeProp,
   onSelect: onSelectProp,
+  onSelectIds: onSelectIdsProp,
   onLabelChange: onLabelChangeProp,
   onColorChange: onColorChangeProp,
   fonts: fontsProp,
@@ -123,6 +147,7 @@ export function AnnotateProvider({
   const [draftState, setDraftState] = useState<DraftAnnotation | null>(null);
   const [toolState, setToolState] = useState<AnnotateTool>(initialTool);
   const [selectedIdState, setSelectedIdState] = useState<string | null>(null);
+  const [selectedIdsState, setSelectedIdsState] = useState<string[]>([]);
   const [selectedVertexIndex, setSelectedVertexIndexState] = useState<
     number | null
   >(null);
@@ -140,11 +165,15 @@ export function AnnotateProvider({
   const annotationsRef = useRef(annotations);
   annotationsRef.current = annotationsState;
   const selectedIdRef = useRef(selectedIdProp ?? selectedIdState);
+  const selectedIdsRef = useRef<string[]>(selectedIdsProp ?? selectedIdsState);
   const selectedVertexIndexRef = useRef<number | null>(null);
   const draft = draftProp ?? draftState;
   const tool = toolProp ?? toolState;
-  const selectedId = selectedIdProp ?? selectedIdState;
+  const selectedIds = selectedIdsProp ?? selectedIdsState;
+  const selectedId =
+    selectedIdProp ?? selectedIds[selectedIds.length - 1] ?? selectedIdState;
   selectedIdRef.current = selectedId;
+  selectedIdsRef.current = selectedIds;
   selectedVertexIndexRef.current = selectedVertexIndex;
 
   const syncHistoryFlags = useCallback(() => {
@@ -239,18 +268,47 @@ export function AnnotateProvider({
     [recordCommit],
   );
 
+  const applySelection = useCallback(
+    (ids: string[], notify = true) => {
+      const next = uniqueIds(ids);
+      const primary = next[next.length - 1] ?? null;
+      if (primary !== selectedIdRef.current || next.length !== 1) {
+        selectedVertexIndexRef.current = null;
+        setSelectedVertexIndexState(null);
+      }
+      selectedIdsRef.current = next;
+      selectedIdRef.current = primary;
+      if (selectedIdsProp === undefined) setSelectedIdsState(next);
+      if (selectedIdProp === undefined) setSelectedIdState(primary);
+      if (notify) {
+        onSelectProp?.(primary);
+        onSelectIdsProp?.(next);
+      }
+    },
+    [onSelectIdsProp, onSelectProp, selectedIdProp, selectedIdsProp],
+  );
+
   const onAdd = useCallback(
     (annotation: Annotation) => {
       endEdit();
       recordCommit(upsertAnnotation(annotationsRef.current, annotation));
-      setSelectedIdState(annotation.id);
-      selectedIdRef.current = annotation.id;
-      selectedVertexIndexRef.current = null;
-      setSelectedVertexIndexState(null);
+      applySelection([annotation.id]);
       setDraftState(null);
       onAddProp?.(annotation);
     },
-    [endEdit, onAddProp, recordCommit],
+    [applySelection, endEdit, onAddProp, recordCommit],
+  );
+
+  const onAddMany = useCallback(
+    (items: Annotation[]) => {
+      if (items.length === 0) return;
+      endEdit();
+      recordCommit(upsertAnnotations(annotationsRef.current, items));
+      applySelection(items.map((item) => item.id));
+      setDraftState(null);
+      for (const item of items) onAddProp?.(item);
+    },
+    [applySelection, endEdit, onAddProp, recordCommit],
   );
 
   const onUpdate = useCallback(
@@ -262,17 +320,36 @@ export function AnnotateProvider({
     [beginEdit, commitAnnotations, onUpdateProp],
   );
 
+  const onUpdateMany = useCallback(
+    (items: Annotation[]) => {
+      if (items.length === 0) return;
+      beginEdit();
+      commitAnnotations(upsertAnnotations(annotationsRef.current, items));
+      for (const item of items) onUpdateProp?.(item);
+    },
+    [beginEdit, commitAnnotations, onUpdateProp],
+  );
+
   const onDelete = useCallback(
     (id: string) => {
       endEdit();
       recordCommit(removeAnnotation(annotationsRef.current, id));
-      setSelectedIdState((current) => (current === id ? null : current));
-      if (selectedIdRef.current === id) selectedIdRef.current = null;
+      const remaining = selectedIdsRef.current.filter((item) => item !== id);
+      selectedIdsRef.current = remaining;
+      if (selectedIdRef.current === id) {
+        selectedIdRef.current = remaining[remaining.length - 1] ?? null;
+      }
+      if (selectedIdsProp === undefined) setSelectedIdsState(remaining);
+      if (selectedIdProp === undefined) {
+        setSelectedIdState((current) =>
+          current === id ? (remaining[remaining.length - 1] ?? null) : current,
+        );
+      }
       selectedVertexIndexRef.current = null;
       setSelectedVertexIndexState(null);
       onDeleteProp?.(id);
     },
-    [endEdit, onDeleteProp, recordCommit],
+    [endEdit, onDeleteProp, recordCommit, selectedIdProp, selectedIdsProp],
   );
 
   const setDraft = useCallback(
@@ -292,16 +369,24 @@ export function AnnotateProvider({
   );
 
   const setSelectedId = useCallback(
-    (id: string | null) => {
-      if (id !== selectedIdRef.current) {
-        selectedVertexIndexRef.current = null;
-        setSelectedVertexIndexState(null);
-      }
-      selectedIdRef.current = id;
-      if (selectedIdProp === undefined) setSelectedIdState(id);
-      onSelectProp?.(id);
+    (id: string | null, options?: SelectOptions) => {
+      applySelection(
+        nextSelectedIds(
+          annotationsRef.current,
+          selectedIdsRef.current,
+          id,
+          options?.additive,
+        ),
+      );
     },
-    [onSelectProp, selectedIdProp],
+    [applySelection],
+  );
+
+  const setSelectedIds = useCallback(
+    (ids: string[]) => {
+      applySelection(expandGroupIds(annotationsRef.current, ids));
+    },
+    [applySelection],
   );
 
   const setSelectedVertexIndex = useCallback((index: number | null) => {
@@ -329,8 +414,8 @@ export function AnnotateProvider({
     }
     if (draftProp === undefined) setDraftState(null);
     onDraftChangeProp?.(null);
-    if (toolProp === undefined) setToolState("select");
-    onToolChangeProp?.("select");
+    if (toolProp === undefined) setToolState(IDLE_TOOL);
+    onToolChangeProp?.(IDLE_TOOL);
   }, [draftProp, onDraftChangeProp, onToolChangeProp, toolProp]);
 
   const setLabel = useCallback(
@@ -372,27 +457,57 @@ export function AnnotateProvider({
   );
 
   const removeSelected = useCallback(() => {
+    const ids = selectedIdsRef.current;
     const id = selectedIdRef.current;
-    if (!id) return;
-    const match = annotationsRef.current.find(
-      (annotation) => annotation.id === id,
-    );
-    const vertexIndex = selectedVertexIndexRef.current;
-    if (match && vertexIndex != null && canRemoveVertex(match, vertexIndex)) {
-      const next = removeVertex(match, vertexIndex);
-      endEdit();
-      recordCommit(upsertAnnotation(annotationsRef.current, next));
-      const vertices = editableVertices(next);
-      setSelectedVertexIndexState(
-        vertices.length === 0
-          ? null
-          : Math.min(vertexIndex, vertices.length - 1),
+    if (ids.length === 0 && !id) return;
+    if (ids.length <= 1 && id) {
+      const match = annotationsRef.current.find(
+        (annotation) => annotation.id === id,
       );
-      onUpdateProp?.(next);
+      const vertexIndex = selectedVertexIndexRef.current;
+      if (match && vertexIndex != null && canRemoveVertex(match, vertexIndex)) {
+        const next = removeVertex(match, vertexIndex);
+        endEdit();
+        recordCommit(upsertAnnotation(annotationsRef.current, next));
+        const vertices = editableVertices(next);
+        setSelectedVertexIndexState(
+          vertices.length === 0
+            ? null
+            : Math.min(vertexIndex, vertices.length - 1),
+        );
+        onUpdateProp?.(next);
+        return;
+      }
+      onDelete(id);
       return;
     }
-    onDelete(id);
-  }, [endEdit, onDelete, onUpdateProp, recordCommit]);
+    endEdit();
+    recordCommit(removeAnnotations(annotationsRef.current, ids));
+    for (const item of ids) onDeleteProp?.(item);
+    applySelection([]);
+  }, [
+    applySelection,
+    endEdit,
+    onDelete,
+    onDeleteProp,
+    onUpdateProp,
+    recordCommit,
+  ]);
+
+  const groupSelected = useCallback(() => {
+    const ids = selectedIdsRef.current;
+    if (!canGroupAnnotations(annotationsRef.current, ids)) return;
+    endEdit();
+    recordCommit(groupAnnotations(annotationsRef.current, ids));
+    applySelection(expandGroupIds(annotationsRef.current, ids), false);
+  }, [applySelection, endEdit, recordCommit]);
+
+  const ungroupSelected = useCallback(() => {
+    const ids = selectedIdsRef.current;
+    if (!canUngroupAnnotations(annotationsRef.current, ids)) return;
+    endEdit();
+    recordCommit(ungroupAnnotations(annotationsRef.current, ids));
+  }, [endEdit, recordCommit]);
 
   useEffect(() => {
     if (annotationsProp === undefined) return;
@@ -424,7 +539,9 @@ export function AnnotateProvider({
       tool,
       setTool,
       selectedId,
+      selectedIds,
       setSelectedId,
+      setSelectedIds,
       selectedVertexIndex,
       setSelectedVertexIndex,
       setLabel,
@@ -433,7 +550,9 @@ export function AnnotateProvider({
       fonts,
       defaultFontFamily,
       onAdd,
+      onAddMany,
       onUpdate,
+      onUpdateMany,
       onDelete,
       onDraftChange: setDraft,
       onToolChange: setTool,
@@ -449,6 +568,10 @@ export function AnnotateProvider({
       canUndo,
       canRedo,
       removeSelected,
+      groupSelected,
+      ungroupSelected,
+      canGroup: canGroupAnnotations(annotations, selectedIds),
+      canUngroup: canUngroupAnnotations(annotations, selectedIds),
       showLabels,
       showArea,
       trace,
@@ -463,15 +586,20 @@ export function AnnotateProvider({
       finish,
       fonts,
       defaultFontFamily,
+      groupSelected,
       onAdd,
+      onAddMany,
       onDelete,
       onLabelChange,
       onUpdate,
+      onUpdateMany,
       redo,
       registerFinish,
       removeSelected,
       replaceAnnotations,
       selectedId,
+      selectedIds,
+      setSelectedIds,
       selectedVertexIndex,
       setDraft,
       setColor,
@@ -484,6 +612,7 @@ export function AnnotateProvider({
       showLabels,
       trace,
       tool,
+      ungroupSelected,
       undo,
     ],
   );

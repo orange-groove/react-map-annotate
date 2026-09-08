@@ -354,6 +354,9 @@ item.setStyle({ fontFamily: fonts[1]?.family });
 
 Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 
+- **Select** — click an annotation to select it. Shift-click or ⌘/Ctrl-click
+  adds or removes. Drag an empty area to draw a dotted box; everything inside
+  is selected. Hold Shift while dragging the box to add to the selection.
 - **Trace** — hover a road or building outline to highlight it. Click to
   keep that feature. Move the finished shape by its bounds box; it has no
   vertex handles.
@@ -367,9 +370,17 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
   lines, arrows, and measures. Vertices resize polygons and rectangles. A
   diagonal handle resizes circles. Hollow mid-edge handles insert vertices on
   polygons and paths. Double-click a vertex (or select it and press Delete) to
-  remove it. Undo / redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens
-  Duplicate, Copy, Paste, and Delete. ⌘D / Ctrl+D duplicates the selection to
-  the right. ⌘C / Ctrl+C copies it; ⌘V / Ctrl+V pastes at the pointer.
+  remove it. Shift-click or ⌘/Ctrl-click to select more than one annotation.
+  With the Select tool, drag a dotted rectangle to select everything inside
+  (Shift-drag adds to the selection). Click Select again, or press Finish /
+  Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
+  the rest. Drag a selected shape to move the whole selection. Vertex handles
+  stay hidden while more than one item is selected.
+  ⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
+  redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,
+  Group, Ungroup, and Delete. ⌘D / Ctrl+D duplicates the selection to the
+  right. ⌘C / Ctrl+C copies the selected set; ⌘V / Ctrl+V pastes it at the
+  pointer, keeping relative spacing and group membership.
 
 ```tsx
 <Annotate
@@ -399,6 +410,7 @@ enabled, each sample records ground height.
 
 | Tool                  | What it does                                                                                                                       |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Select                | Click to select. Shift/⌘-click for more than one. Drag a dotted box to select several at once.                                     |
 | Freehand              | Sketch a path. Hover for a bounds box; drag to move.                                                                               |
 | Trace                 | Hover a rendered road or building outline, click to adopt it. No freehand, no per-vertex handles.                                  |
 | Line                  | Two-click segment. Hover ends to resize.                                                                                           |

@@ -8,11 +8,14 @@ import {
   isDrawingTool,
   isPointTool,
   isTraceTool,
+  isIdleTool,
+  toggleAnnotateTool,
 } from "./constants";
 
 describe("tool helpers", () => {
-  it("treats every drawing tool as active except select", () => {
+  it("treats pan and select as non-drawing tools", () => {
     expect(isDrawingTool("select")).toBe(false);
+    expect(isDrawingTool("pan")).toBe(false);
     expect(isDrawingTool(undefined)).toBe(false);
     expect(isDrawingTool("line")).toBe(true);
     expect(isDrawingTool("trace")).toBe(true);
@@ -34,6 +37,14 @@ describe("tool helpers", () => {
     expect(isPointTool("text")).toBe(true);
     expect(isPointTool("marker")).toBe(true);
     expect(isPointTool("line")).toBe(false);
+  });
+
+  it("toggles an active tool back to pan", () => {
+    expect(isIdleTool("pan")).toBe(true);
+    expect(isIdleTool("select")).toBe(false);
+    expect(toggleAnnotateTool("select", "select")).toBe("pan");
+    expect(toggleAnnotateTool("pan", "select")).toBe("select");
+    expect(toggleAnnotateTool("line", "polygon")).toBe("polygon");
   });
 });
 

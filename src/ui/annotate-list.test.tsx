@@ -188,6 +188,23 @@ describe("AnnotateList", () => {
     expect(items[1]?.className).toContain("rma-list-item--selected");
   });
 
+  it("highlights every id in a multi-selection", () => {
+    const other: Annotation = {
+      ...line,
+      id: "l2",
+      label: "South fence",
+    };
+    render(
+      <AnnotateList
+        annotations={[line, other]}
+        selectedIds={["l1", "l2"]}
+      />,
+    );
+    const items = screen.getAllByRole("listitem");
+    expect(items[0]?.getAttribute("aria-selected")).toBe("true");
+    expect(items[1]?.getAttribute("aria-selected")).toBe("true");
+  });
+
   it("selects an annotation from the list", async () => {
     const onSelect = vi.fn();
     const user = userEvent.setup();

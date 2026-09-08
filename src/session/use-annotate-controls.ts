@@ -5,8 +5,14 @@ import {
   DEFAULT_LABELS,
   DEFAULT_TOOLBAR_TOOLS,
   TOOL_LABELS,
+  toggleAnnotateTool,
 } from "../core/constants";
-import type { AnnotateTool, Annotation, AnnotationStyle } from "../core/types";
+import type {
+  AnnotateTool,
+  Annotation,
+  AnnotationStyle,
+  SelectOptions,
+} from "../core/types";
 import { canPressFinish, cssColorForInput } from "../core/utils/annotations";
 import { useAnnotate } from "./use-annotate";
 
@@ -26,7 +32,7 @@ export interface AnnotateListItem {
   color: string;
   fontFamily?: string;
   isSelected: boolean;
-  select: () => void;
+  select: (options?: SelectOptions) => void;
   setLabel: (label: string) => void;
   setColor: (color: string) => void;
   setStyle: (style: AnnotationStyle) => void;
@@ -44,11 +50,16 @@ export function useAnnotateTools(
       id,
       label: TOOL_LABELS[id],
       active: session.tool === id,
-      select: () => session.setTool(id),
+      select: () => session.setTool(toggleAnnotateTool(session.tool, id)),
     })),
     canFinish: canPressFinish(session.tool, session.draft),
     finish: session.finish,
     selectedId: session.selectedId,
+    selectedIds: session.selectedIds,
+    groupSelected: session.groupSelected,
+    ungroupSelected: session.ungroupSelected,
+    canGroup: session.canGroup,
+    canUngroup: session.canUngroup,
     deleteSelected: () => session.removeSelected(),
     undo: session.undo,
     redo: session.redo,
@@ -71,8 +82,9 @@ export function useAnnotateItems(defaultColor = DEFAULT_COLOR) {
     label: annotation.label,
     color: cssColorForInput(annotation.style?.color, defaultColor),
     fontFamily: annotation.style?.fontFamily,
-    isSelected: session.selectedId === annotation.id,
-    select: () => session.setSelectedId(annotation.id),
+    isSelected: session.selectedIds.includes(annotation.id),
+    select: (options?: SelectOptions) =>
+      session.setSelectedId(annotation.id, options),
     setLabel: (label: string) => session.setLabel(annotation.id, label),
     setColor: (color: string) => session.setColor(annotation.id, color),
     setStyle: (style: AnnotationStyle) =>

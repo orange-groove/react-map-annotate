@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PathAnnotation } from "../core/types";
 import {
   peekAnnotationClipboard,
+  peekAnnotationClipboardItems,
   writeAnnotationClipboard,
 } from "../core/utils/clipboard";
 import {
@@ -41,6 +42,27 @@ describe("copySelectedAnnotation", () => {
   it("does nothing without a selection", () => {
     writeAnnotationClipboard(line);
     expect(copySelectedAnnotation(latest({ selectedId: null }))).toBe(false);
+  });
+
+  it("copies every selected annotation", () => {
+    const other: PathAnnotation = {
+      ...line,
+      id: "line-2",
+      label: "South",
+    };
+    expect(
+      copySelectedAnnotation(
+        latest({
+          annotations: [line, other],
+          selectedId: "line-2",
+          selectedIds: ["line-1", "line-2"],
+        }),
+      ),
+    ).toBe(true);
+    expect(peekAnnotationClipboardItems().map((item) => item.id)).toEqual([
+      "line-1",
+      "line-2",
+    ]);
   });
 });
 

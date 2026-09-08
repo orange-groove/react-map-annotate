@@ -169,6 +169,7 @@ export function buildAnnotationFeatures({
   annotations,
   draft = null,
   selectedId = null,
+  selectedIds,
   hoveredId = null,
   defaultColor = DEFAULT_COLOR,
   defaultStrokeWidth = DEFAULT_STROKE_WIDTH,
@@ -176,6 +177,7 @@ export function buildAnnotationFeatures({
   annotations: Annotation[];
   draft?: DraftAnnotation | null;
   selectedId?: string | null;
+  selectedIds?: string[];
   hoveredId?: string | null;
   defaultColor?: string;
   defaultStrokeWidth?: number;
@@ -189,7 +191,9 @@ export function buildAnnotationFeatures({
   const markers: MarkerAnnotation[] = [];
 
   for (const annotation of annotations) {
-    const selected = annotation.id === selectedId;
+    const selected = selectedIds?.length
+      ? selectedIds.includes(annotation.id)
+      : annotation.id === selectedId;
     const color = annotationColor(annotation, defaultColor);
     if (isPathAnnotation(annotation)) {
       const strokeWidth = annotation.style?.strokeWidth ?? defaultStrokeWidth;

@@ -78,6 +78,7 @@ type OverlayAnnotateLayersProps = Pick<
   | "annotations"
   | "draft"
   | "selectedId"
+  | "selectedIds"
   | "defaultColor"
   | "defaultStrokeWidth"
   | "labelsEditable"
@@ -106,6 +107,7 @@ function OverlayPaint({
   annotations = [],
   draft,
   selectedId,
+  selectedIds,
   hoveredId = null,
   defaultColor,
   defaultStrokeWidth,
@@ -131,6 +133,7 @@ function OverlayPaint({
       annotations,
       draft,
       selectedId,
+      selectedIds,
       hoveredId,
       defaultColor: color,
       defaultStrokeWidth: strokeWidth,
@@ -253,6 +256,7 @@ function OverlayPaint({
         annotations={annotations}
         draft={draft}
         selectedId={selectedId}
+        selectedIds={selectedIds}
         hoveredId={hoveredId}
         color={color}
         labelsEditable={labelsEditable}

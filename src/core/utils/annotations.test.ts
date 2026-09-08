@@ -235,8 +235,9 @@ describe("draft helpers", () => {
     expect(canFinishDraft(draft("trace", [origin, east]))).toBe(true);
   });
 
-  it("enables finish while a drawing tool is active", () => {
-    expect(canPressFinish("select", null)).toBe(false);
+  it("enables finish while a drawing tool or select is active", () => {
+    expect(canPressFinish("pan", null)).toBe(false);
+    expect(canPressFinish("select", null)).toBe(true);
     expect(canPressFinish("polygon", null)).toBe(true);
     expect(canPressFinish("trace", null)).toBe(true);
     expect(

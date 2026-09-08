@@ -52,6 +52,15 @@ function createLeafletMapLike(map: LeafletMap): MapLike {
       },
       isEnabled: () => map.dragging.enabled(),
     },
+    boxZoom: {
+      enable: () => {
+        map.boxZoom.enable();
+      },
+      disable: () => {
+        map.boxZoom.disable();
+      },
+      isEnabled: () => map.boxZoom.enabled(),
+    },
     on: (type, listener) => {
       const handler: L.LeafletEventHandlerFn = (event) => {
         if (POINTER_EVENTS.has(type)) {

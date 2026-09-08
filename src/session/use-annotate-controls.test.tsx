@@ -44,6 +44,11 @@ describe("useAnnotateTools", () => {
     expect(result.current.canFinish).toBe(true);
     expect(result.current.canUndo).toBe(false);
     expect(result.current.undo).toBeTypeOf("function");
+    act(() => {
+      result.current.items[1]?.select();
+    });
+    expect(result.current.tool).toBe("pan");
+    expect(result.current.items[1]?.active).toBe(false);
   });
 });
 

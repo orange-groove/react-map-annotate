@@ -14,13 +14,16 @@ import type {
   AnnotateListProps,
   Annotation,
   AnnotationStyle,
+  SelectOptions,
 } from "../core/types";
 import { cssColorForInput, isArrowAnnotation } from "../core/utils/annotations";
 import { fontPickerOptions, resolveAnnotateFonts } from "../core/utils/fonts";
+import { idIsSelected, isAdditiveSelect } from "../core/utils/selection";
 
 export function AnnotateList({
   annotations: annotationsProp,
   selectedId: selectedIdProp,
+  selectedIds: selectedIdsProp,
   onSelect: onSelectProp,
   onLabelChange: onLabelChangeProp,
   onColorChange: onColorChangeProp,
@@ -38,6 +41,7 @@ export function AnnotateList({
     selectedIdProp !== undefined
       ? selectedIdProp
       : (session?.selectedId ?? null);
+  const selectedIds = selectedIdsProp ?? session?.selectedIds;
   const onSelect = onSelectProp ?? session?.setSelectedId;
   const onLabelChange =
     onLabelChangeProp ??
@@ -71,7 +75,7 @@ export function AnnotateList({
             <AnnotationRow
               key={annotation.id}
               annotation={annotation}
-              selected={selectedId === annotation.id}
+              selected={idIsSelected(annotation.id, selectedIds, selectedId)}
               defaultColor={defaultColor}
               onSelect={onSelect}
               onLabelChange={onLabelChange}
@@ -101,7 +105,7 @@ function AnnotationRow({
   annotation: Annotation;
   selected: boolean;
   defaultColor: string;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, options?: SelectOptions) => void;
   onLabelChange?: (id: string, label: string) => void;
   onColorChange?: (id: string, color: string) => void;
   onStyleChange?: (id: string, style: AnnotationStyle) => void;
@@ -119,7 +123,13 @@ function AnnotationRow({
         .filter(Boolean)
         .join(" ")}
       aria-selected={selected}
-      onPointerDown={() => onSelect?.(annotation.id)}
+      onPointerDown={(event) => {
+        if (isAdditiveSelect(event)) {
+          onSelect?.(annotation.id, { additive: true });
+          return;
+        }
+        onSelect?.(annotation.id);
+      }}
     >
       <span className="rma-list-kind">{kind}</span>
       <input

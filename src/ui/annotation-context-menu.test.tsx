@@ -16,9 +16,13 @@ describe("AnnotationContextMenu", () => {
         canCopy
         canPaste={false}
         canDelete
+        canGroup
+        canUngroup={false}
         onDuplicate={onDuplicate}
         onCopy={vi.fn()}
         onPaste={vi.fn()}
+        onGroup={vi.fn()}
+        onUngroup={vi.fn()}
         onDelete={vi.fn()}
         onClose={onClose}
       />,

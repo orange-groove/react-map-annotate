@@ -4,7 +4,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useRef } from "react";
 import { DEFAULT_COLOR, HANDLE_HIT_PX } from "../core/constants";
 import { useMapGl } from "../engines/kit/context";
-import type { Annotation, LngLat } from "../core/types";
+import type { Annotation, LngLat, SelectOptions } from "../core/types";
 import {
   applyEditHandle,
   editHandleCursor,
@@ -12,6 +12,7 @@ import {
   type EditHandleHit,
 } from "../core/utils/edit";
 import { startHandleDrag } from "../interaction/pointer-drag";
+import { isAdditiveSelect } from "../core/utils/selection";
 import { useOptionalAnnotate } from "../session/annotate-context";
 
 function CircleResizeIcon() {
@@ -98,7 +99,7 @@ function HandleMarker({
   selected: boolean;
   onUpdate?: (annotation: Annotation) => void;
   onDragEnd?: () => void;
-  onSelect?: () => void;
+  onSelect?: (options?: SelectOptions) => void;
   onRemove?: () => void;
 }) {
   const { Marker, useMap } = useMapGl();
@@ -109,6 +110,12 @@ function HandleMarker({
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     const map = maps.current?.getMap();
     if (!map) return;
+    if (isAdditiveSelect(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      onSelect?.({ additive: true });
+      return;
+    }
     originRef.current = annotation;
     onSelect?.();
     startHandleDrag(
@@ -219,8 +226,9 @@ export function EditHandles({
                 ? `Add ${annotation.kind} vertex`
                 : `Resize ${annotation.kind} vertex ${handle.index + 1}`
           }
-          onSelect={() => {
-            session?.setSelectedId(annotation.id);
+          onSelect={(options) => {
+            session?.setSelectedId(annotation.id, options);
+            if (options?.additive) return;
             session?.setSelectedVertexIndex(
               handle.kind === "insert" ? handle.index + 1 : handle.index,
             );

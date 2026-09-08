@@ -30,13 +30,12 @@ export function setPointerCursor(cursor: string | null) {
   root.classList.add(DRAG_CURSOR_CLASS);
 }
 
+const UI_TARGET_SELECTOR =
+  "[data-rma-label], [data-rma-handle], [data-rma-marker], .rma-toolbar, .rma-menu, input, textarea";
+
 export function isUiTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(
-    target.closest(
-      "[data-rma-label], [data-rma-handle], .mapboxgl-marker, .maplibregl-marker, .leaflet-marker-icon, .rma-overlay-marker, .rma-toolbar, .rma-menu, input, textarea",
-    ),
-  );
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest(UI_TARGET_SELECTOR));
 }
 
 export function lastTwoEqual(coordinates: LngLat[]): boolean {

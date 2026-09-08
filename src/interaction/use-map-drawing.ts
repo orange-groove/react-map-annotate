@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  IDLE_TOOL,
   isClickVertexTool,
   isDragTool,
   isDrawingTool,
@@ -11,6 +12,7 @@ import type {
   Annotation,
   DraftAnnotation,
   LngLat,
+  SelectOptions,
   TraceHit,
   TraceOption,
 } from "../core/types";
@@ -38,7 +40,7 @@ import {
   setPointerCursor,
 } from "../core/utils/interaction";
 import { useMapGl } from "../engines/kit/context";
-import type { MapPointerEvent, MapRef } from "../engines/kit/types";
+import type { MapLike, MapPointerEvent, MapRef } from "../engines/kit/types";
 import {
   copySelectedAnnotation,
   duplicateSelectedAnnotation,
@@ -46,6 +48,18 @@ import {
   type AnnotationContextMenuState,
   pasteAnnotationAtPointer,
 } from "./clipboard-actions";
+import {
+  expandGroupIds,
+  isAdditiveSelect,
+  nextSelectedIds,
+  unionSelectedIds,
+} from "../core/utils/selection";
+import {
+  idsInScreenRect,
+  MARQUEE_MIN_PX,
+  screenRectFromPoints,
+  type ScreenRect,
+} from "../core/utils/hit-test";
 import { resolveTrace, sameTracePath } from "../core/utils/trace";
 import { hitAnnotationId, resolveHandleTarget } from "./hit";
 
@@ -54,21 +68,63 @@ export interface MapDrawingLatest {
   draft: DraftAnnotation | null;
   tool: AnnotateTool;
   selectedId: string | null;
+  selectedIds?: string[];
   defaultColor: string;
   defaultFontFamily?: string;
   sampleIntervalMeters: number;
   onAdd?: (annotation: Annotation) => void;
+  onAddMany?: (annotations: Annotation[]) => void;
   onUpdate?: (annotation: Annotation) => void;
+  onUpdateMany?: (annotations: Annotation[]) => void;
   onDelete?: (id: string) => void;
   onDraftChange?: (draft: DraftAnnotation | null) => void;
   onToolChange?: (tool: AnnotateTool) => void;
-  onSelect?: (id: string | null) => void;
+  onSelect?: (id: string | null, options?: SelectOptions) => void;
+  setSelectedIds?: (ids: string[]) => void;
   setSelectedVertexIndex?: (index: number | null) => void;
   undo?: () => void;
   redo?: () => void;
   endEdit?: () => void;
   removeSelected?: () => void;
+  groupSelected?: () => void;
+  ungroupSelected?: () => void;
   trace?: TraceOption;
+}
+
+function currentSelectedIds(latest: MapDrawingLatest): string[] {
+  return latest.selectedIds ?? (latest.selectedId ? [latest.selectedId] : []);
+}
+
+function applySelectedIds(
+  latest: MapDrawingLatest,
+  ids: string[],
+  additive = false,
+) {
+  if (latest.setSelectedIds) {
+    latest.setSelectedIds(ids);
+    return;
+  }
+  const primary = ids[ids.length - 1] ?? null;
+  if (additive && primary) latest.onSelect?.(primary, { additive: true });
+  else latest.onSelect?.(primary);
+}
+
+function restorePanCursor(map: MapLike, tool: AnnotateTool) {
+  if (!isDrawingTool(tool) || isTraceTool(tool)) {
+    map.dragPan.enable();
+    setMapCursor(map, isTraceTool(tool) ? "crosshair" : "");
+  } else {
+    setMapCursor(map, "crosshair");
+  }
+}
+
+function disableNativeBoxZoom(map: MapLike): () => void {
+  if (!map.boxZoom) return () => undefined;
+  const wasEnabled = map.boxZoom.isEnabled?.() ?? true;
+  map.boxZoom.disable();
+  return () => {
+    if (wasEnabled) map.boxZoom?.enable();
+  };
 }
 
 export function useMapDrawing({
@@ -94,10 +150,17 @@ export function useMapDrawing({
   const [tracePreview, setTracePreview] = React.useState<LngLat[] | null>(null);
   const [contextMenu, setContextMenu] =
     React.useState<AnnotationContextMenuState | null>(null);
+  const [marquee, setMarquee] = React.useState<ScreenRect | null>(null);
+  const marqueeRef = React.useRef<{
+    start: { x: number; y: number };
+    current: { x: number; y: number };
+    additive: boolean;
+  } | null>(null);
   const editRef = React.useRef<{
     id: string;
     start: LngLat;
     original: Annotation;
+    originals: Annotation[];
     handle?: EditHandleHit;
     handleAt?: LngLat;
   } | null>(null);
@@ -130,17 +193,24 @@ export function useMapDrawing({
   );
 
   const copySelected = React.useCallback(() => {
-    return copySelectedAnnotation(
-      latestRef.current,
-      latestRef.current.selectedId ?? hoverIdRef.current,
-    );
+    const latest = latestRef.current;
+    const ids =
+      latest.selectedIds?.length || latest.selectedId
+        ? undefined
+        : hoverIdRef.current;
+    return copySelectedAnnotation(latest, ids);
   }, [latestRef]);
 
   const duplicateSelected = React.useCallback(() => {
+    const latest = latestRef.current;
+    const ids =
+      latest.selectedIds?.length || latest.selectedId
+        ? undefined
+        : hoverIdRef.current;
     return duplicateSelectedAnnotation(
-      latestRef.current,
+      latest,
       resolveMap()?.getMap() ?? null,
-      latestRef.current.selectedId ?? hoverIdRef.current,
+      ids,
     );
   }, [latestRef, resolveMap]);
 
@@ -173,12 +243,14 @@ export function useMapDrawing({
       latestRef.current.onDraftChange?.(null);
       setTracePreview(null);
     }
-    latestRef.current.onToolChange?.("select");
+    latestRef.current.onToolChange?.(IDLE_TOOL);
   }, [commitDraft, latestRef]);
 
   const cancelDrawing = React.useCallback(() => {
     dragRef.current = false;
     editRef.current = null;
+    marqueeRef.current = null;
+    setMarquee(null);
     latestRef.current.draft = null;
     latestRef.current.onDraftChange?.(null);
     setTracePreview(null);
@@ -214,6 +286,8 @@ export function useMapDrawing({
         map.dragPan.enable();
         setMapCursor(map, "");
       }
+
+      const restoreBoxZoom = disableNativeBoxZoom(map);
 
       const pushDraft = (next: DraftAnnotation | null) => {
         latestRef.current.draft = next;
@@ -263,9 +337,19 @@ export function useMapDrawing({
         );
       };
 
+      const additiveHeld = { current: false };
+      const syncAdditiveHeld = (event: KeyboardEvent | MouseEvent) => {
+        additiveHeld.current = Boolean(
+          event.shiftKey || event.metaKey || event.ctrlKey,
+        );
+      };
+      const eventIsAdditive = (event: MapPointerEvent) =>
+        isAdditiveSelect(event) || additiveHeld.current;
+
       const onMouseDown = (event: MapPointerEvent) => {
         if (event.originalEvent.button !== 0) return;
         if (isUiTarget(event.originalEvent.target)) return;
+        const additive = eventIsAdditive(event);
         const {
           tool: activeTool,
           draft: current,
@@ -281,7 +365,7 @@ export function useMapDrawing({
               hoverIdRef.current,
               hitId,
             );
-        if (handleTarget) {
+        if (handleTarget && !additive) {
           const handleAt = editHandlesFor(handleTarget.annotation, (lngLat) =>
             map.project(lngLat),
           ).find(
@@ -293,11 +377,16 @@ export function useMapDrawing({
             id: handleTarget.annotation.id,
             start: eventLngLat(event),
             original: handleTarget.annotation,
+            originals: [handleTarget.annotation],
             handle: handleTarget.handle,
             handleAt,
           };
-          suppressClickRef.current = false;
-          latestRef.current.onSelect?.(handleTarget.annotation.id);
+          suppressClickRef.current = true;
+          if (latestRef.current.setSelectedIds) {
+            latestRef.current.setSelectedIds([handleTarget.annotation.id]);
+          } else {
+            latestRef.current.onSelect?.(handleTarget.annotation.id);
+          }
           latestRef.current.setSelectedVertexIndex?.(
             handleTarget.handle.kind === "insert"
               ? handleTarget.handle.index + 1
@@ -311,17 +400,30 @@ export function useMapDrawing({
           setPointerCursor(editHandleCursor(handleTarget.handle));
           return;
         }
-        if (hitId) {
-          const original = items.find((item) => item.id === hitId);
+        const targetId =
+          hitId ?? (additive ? (handleTarget?.annotation.id ?? null) : null);
+        if (targetId) {
+          const original = items.find((item) => item.id === targetId);
           if (original) {
+            const currentIds = currentSelectedIds(latestRef.current);
+            const already = currentIds.includes(targetId);
+            const nextIds =
+              already && !additive
+                ? currentIds
+                : nextSelectedIds(items, currentIds, targetId, additive);
+            applySelectedIds(latestRef.current, nextIds, additive);
+            suppressClickRef.current = true;
+            setHoverId(targetId);
+            if (additive) {
+              event.preventDefault();
+              return;
+            }
             editRef.current = {
-              id: hitId,
+              id: targetId,
               start: eventLngLat(event),
               original,
+              originals: items.filter((item) => nextIds.includes(item.id)),
             };
-            suppressClickRef.current = false;
-            latestRef.current.onSelect?.(hitId);
-            setHoverId(hitId);
             map.dragPan.disable();
             setMapCursor(map, "grabbing");
             setPointerCursor("grabbing");
@@ -329,6 +431,18 @@ export function useMapDrawing({
           }
         }
         if (isTraceTool(activeTool)) return;
+        if (activeTool === "select") {
+          event.preventDefault();
+          marqueeRef.current = {
+            start: event.point,
+            current: event.point,
+            additive,
+          };
+          setMarquee(screenRectFromPoints(event.point, event.point));
+          map.dragPan.disable();
+          setMapCursor(map, "crosshair");
+          return;
+        }
         if (!isDrawingTool(activeTool) || !isDragTool(activeTool)) return;
         dragRef.current = true;
         const start = eventLngLat(event);
@@ -343,6 +457,13 @@ export function useMapDrawing({
         const { tool: activeTool, draft: current } = latestRef.current;
         const point = eventLngLat(event);
         lastPointerRef.current = point;
+        const marqueeDrag = marqueeRef.current;
+        if (marqueeDrag) {
+          marqueeDrag.current = event.point;
+          setMarquee(screenRectFromPoints(marqueeDrag.start, event.point));
+          setMapCursor(map, "crosshair");
+          return;
+        }
         const edit = editRef.current;
         if (edit) {
           if (haversineDistance(edit.start, point) > 1) {
@@ -358,6 +479,17 @@ export function useMapDrawing({
             );
             setMapCursor(map, editHandleCursor(edit.handle));
             setPointerCursor(editHandleCursor(edit.handle));
+          } else if (edit.originals.length > 1) {
+            const moved = edit.originals.map((item) =>
+              moveAnnotation(item, edit.start, point),
+            );
+            if (latestRef.current.onUpdateMany) {
+              latestRef.current.onUpdateMany(moved);
+            } else {
+              for (const item of moved) latestRef.current.onUpdate?.(item);
+            }
+            setMapCursor(map, "grabbing");
+            setPointerCursor("grabbing");
           } else {
             latestRef.current.onUpdate?.(
               moveAnnotation(edit.original, edit.start, point),
@@ -423,19 +555,45 @@ export function useMapDrawing({
         }
       };
 
+      const finishMarquee = () => {
+        const drag = marqueeRef.current;
+        if (!drag) return false;
+        marqueeRef.current = null;
+        const rect = screenRectFromPoints(drag.start, drag.current);
+        setMarquee(null);
+        restorePanCursor(map, latestRef.current.tool);
+        setPointerCursor(null);
+        if (rect.width < MARQUEE_MIN_PX && rect.height < MARQUEE_MIN_PX) {
+          return false;
+        }
+        suppressClickRef.current = true;
+        const items = latestRef.current.annotations;
+        const hitIds = idsInScreenRect(
+          (lngLat) => map.project(lngLat),
+          rect,
+          items,
+        );
+        const next = drag.additive
+          ? unionSelectedIds(items, currentSelectedIds(latestRef.current), hitIds)
+          : expandGroupIds(items, hitIds);
+        applySelectedIds(latestRef.current, next, drag.additive);
+        return true;
+      };
+
+      const onWindowMouseUp = (event: MouseEvent) => {
+        if (event.button !== 0) return;
+        finishMarquee();
+      };
+
       const onMouseUp = (event: MapPointerEvent) => {
+        if (finishMarquee()) return;
         if (editRef.current) {
           const editedId = editRef.current.id;
           editRef.current = null;
           latestRef.current.endEdit?.();
           setHoverId(editedId);
           setPointerCursor(null);
-          if (!isDrawingTool(latestRef.current.tool)) {
-            map.dragPan.enable();
-            setMapCursor(map, "");
-          } else {
-            setMapCursor(map, "crosshair");
-          }
+          restorePanCursor(map, latestRef.current.tool);
           return;
         }
         if (!dragRef.current) return;
@@ -503,19 +661,39 @@ export function useMapDrawing({
         const hitId = current ? null : hitAnnotationId(map, event.point, items);
 
         if (hitId) {
-          latestRef.current.onSelect?.(hitId);
+          const additive = eventIsAdditive(event);
+          if (latestRef.current.setSelectedIds) {
+            applySelectedIds(
+              latestRef.current,
+              nextSelectedIds(
+                items,
+                currentSelectedIds(latestRef.current),
+                hitId,
+                additive,
+              ),
+              additive,
+            );
+          } else if (additive) {
+            latestRef.current.onSelect?.(hitId, { additive: true });
+          } else {
+            latestRef.current.onSelect?.(hitId);
+          }
           return;
         }
 
         if (activeTool === "select") {
-          latestRef.current.onSelect?.(null);
+          if (latestRef.current.setSelectedIds) {
+            latestRef.current.setSelectedIds([]);
+          } else {
+            latestRef.current.onSelect?.(null);
+          }
           return;
         }
 
         if (isPointTool(activeTool)) {
           commitDraft({ kind: activeTool, coordinates: [point] });
           if (activeTool === "text") {
-            latestRef.current.onToolChange?.("select");
+            latestRef.current.onToolChange?.(IDLE_TOOL);
           }
           return;
         }
@@ -605,7 +783,22 @@ export function useMapDrawing({
         if (!next) return;
         lastPointerRef.current = next.lngLat;
         if (next.annotationId) {
-          latestRef.current.onSelect?.(next.annotationId);
+          const currentIds =
+            latestRef.current.selectedIds ??
+            (latestRef.current.selectedId
+              ? [latestRef.current.selectedId]
+              : []);
+          if (!currentIds.includes(next.annotationId)) {
+            if (latestRef.current.setSelectedIds) {
+              latestRef.current.setSelectedIds(
+                expandGroupIds(latestRef.current.annotations, [
+                  next.annotationId,
+                ]),
+              );
+            } else {
+              latestRef.current.onSelect?.(next.annotationId);
+            }
+          }
         }
         setContextMenu(next);
       };
@@ -628,6 +821,10 @@ export function useMapDrawing({
       map.on("click", onClick);
       map.on("dblclick", onDblClick);
       map.on("contextmenu", onContextMenu);
+      window.addEventListener("keydown", syncAdditiveHeld, true);
+      window.addEventListener("keyup", syncAdditiveHeld, true);
+      window.addEventListener("mousemove", syncAdditiveHeld, true);
+      window.addEventListener("mouseup", onWindowMouseUp, true);
       window.addEventListener("contextmenu", onContextMenu, true);
       const canvas = map.getCanvas();
       canvas.addEventListener("contextmenu", onContextMenu, true);
@@ -641,16 +838,27 @@ export function useMapDrawing({
           map.off("click", onClick);
           map.off("dblclick", onDblClick);
           map.off("contextmenu", onContextMenu);
+          window.removeEventListener("keydown", syncAdditiveHeld, true);
+          window.removeEventListener("keyup", syncAdditiveHeld, true);
+          window.removeEventListener("mousemove", syncAdditiveHeld, true);
+          window.removeEventListener("mouseup", onWindowMouseUp, true);
           window.removeEventListener("contextmenu", onContextMenu, true);
           canvas.removeEventListener("pointermove", onCanvasMove, true);
           map
             .getCanvas()
             .removeEventListener("contextmenu", onContextMenu, true);
+          restoreBoxZoom();
           map.dragPan.enable();
+          marqueeRef.current = null;
+          setMarquee(null);
           setPointerCursor(null);
           setMapCursor(map, "");
           setTracePreview(null);
         } catch {
+          window.removeEventListener("keydown", syncAdditiveHeld, true);
+          window.removeEventListener("keyup", syncAdditiveHeld, true);
+          window.removeEventListener("mousemove", syncAdditiveHeld, true);
+          window.removeEventListener("mouseup", onWindowMouseUp, true);
           window.removeEventListener("contextmenu", onContextMenu, true);
           setPointerCursor(null);
           // Host map can be destroyed before this effect cleans up.
@@ -670,6 +878,7 @@ export function useMapDrawing({
   return {
     hoveredId,
     tracePreview,
+    marquee,
     setHoverId,
     resolveMap,
     commitDraft,

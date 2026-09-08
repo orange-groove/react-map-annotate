@@ -10,9 +10,13 @@ export function AnnotationContextMenu({
   canCopy,
   canPaste,
   canDelete,
+  canGroup = false,
+  canUngroup = false,
   onDuplicate,
   onCopy,
   onPaste,
+  onGroup,
+  onUngroup,
   onDelete,
   onClose,
 }: {
@@ -22,15 +26,19 @@ export function AnnotationContextMenu({
   canCopy: boolean;
   canPaste: boolean;
   canDelete: boolean;
+  canGroup?: boolean;
+  canUngroup?: boolean;
   onDuplicate: () => void;
   onCopy: () => void;
   onPaste: () => void;
+  onGroup?: () => void;
+  onUngroup?: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const left = Math.min(x, window.innerWidth - 168);
-  const top = Math.min(y, window.innerHeight - 180);
+  const top = Math.min(y, window.innerHeight - 280);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -83,6 +91,24 @@ export function AnnotationContextMenu({
         onClick={onPaste}
       >
         Paste
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="rma-menu-item"
+        disabled={!canGroup}
+        onClick={onGroup}
+      >
+        Group
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="rma-menu-item"
+        disabled={!canUngroup}
+        onClick={onUngroup}
+      >
+        Ungroup
       </button>
       <button
         type="button"

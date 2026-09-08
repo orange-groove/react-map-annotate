@@ -33,11 +33,16 @@ export {
   cloneAnnotation,
   serializeAnnotationClipboard,
   parseAnnotationClipboard,
+  parseAnnotationClipboardItems,
   writeAnnotationClipboard,
   peekAnnotationClipboard,
+  peekAnnotationClipboardItems,
   readAnnotationClipboard,
+  readAnnotationClipboardItems,
   placeAnnotationAt,
+  placeAnnotationsAt,
   offsetAnnotationByPixels,
+  offsetAnnotationsByPixels,
   duplicateAnnotationRight,
   annotationIdFromTarget,
 } from "./clipboard";
@@ -59,7 +64,9 @@ export {
   updateAnnotationColor,
   cssColorForInput,
   upsertAnnotation,
+  upsertAnnotations,
   removeAnnotation,
+  removeAnnotations,
   annotationFromDraft,
   minVerticesForKind,
   canFinishDraft,
@@ -100,7 +107,24 @@ export {
 } from "./features";
 export type { ArrowMarker, AnnotationFeatures } from "./features";
 
-export { hitTestAnnotations, distanceToSegment, pointInRing } from "./hit-test";
+export { hitTestAnnotations, distanceToSegment, pointInRing, idsInScreenRect, screenRectFromPoints } from "./hit-test";
+export type { ScreenRect } from "./hit-test";
+
+export {
+  uniqueIds,
+  expandGroupIds,
+  toggleSelectedIds,
+  nextSelectedIds,
+  unionSelectedIds,
+  groupAnnotations,
+  ungroupAnnotations,
+  canGroupIds,
+  canGroupAnnotations,
+  canUngroupAnnotations,
+  remapPastedGroupIds,
+  isAdditiveSelect,
+  idIsSelected,
+} from "./selection";
 
 export {
   listTraceLayers,

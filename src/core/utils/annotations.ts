@@ -205,6 +205,21 @@ export function removeAnnotation(
   return annotations.filter((annotation) => annotation.id !== id);
 }
 
+export function upsertAnnotations(
+  annotations: Annotation[],
+  next: Annotation[],
+): Annotation[] {
+  return next.reduce(upsertAnnotation, annotations);
+}
+
+export function removeAnnotations(
+  annotations: Annotation[],
+  ids: string[],
+): Annotation[] {
+  const drop = new Set(ids);
+  return annotations.filter((annotation) => !drop.has(annotation.id));
+}
+
 function pathKind(kind: AnnotationKind): kind is PathAnnotation["kind"] {
   return (
     kind === "draw" ||
@@ -364,5 +379,8 @@ export function canPressFinish(
   tool: AnnotateTool | undefined,
   draft: DraftAnnotation | null,
 ): boolean {
-  return canFinishDraft(draft) || (tool != null && tool !== "select");
+  return (
+    canFinishDraft(draft) ||
+    (tool != null && tool !== "pan")
+  );
 }

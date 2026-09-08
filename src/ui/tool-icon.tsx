@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowUpRight,
   Circle,
+  Hand,
   MapPin,
   MousePointer2,
   MoveDiagonal,
@@ -18,6 +19,7 @@ import {
 import type { AnnotateTool } from "../core/types";
 
 const ICONS: Record<AnnotateTool, LucideIcon> = {
+  pan: Hand,
   select: MousePointer2,
   draw: Pencil,
   trace: Waypoints,

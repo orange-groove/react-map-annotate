@@ -71,6 +71,7 @@ export interface MapLngLat {
 export type LngLat = [longitude: number, latitude: number];
 
 export type AnnotateTool =
+  | "pan"
   | "select"
   | "draw"
   | "trace"
@@ -84,7 +85,7 @@ export type AnnotateTool =
   | "marker"
   | "text";
 
-export type AnnotationKind = Exclude<AnnotateTool, "select">;
+export type AnnotationKind = Exclude<AnnotateTool, "pan" | "select">;
 
 export interface AnnotationStyle {
   color?: string;
@@ -120,6 +121,7 @@ interface AnnotationBase {
   id: string;
   label: string;
   style?: AnnotationStyle;
+  groupId?: string;
 }
 
 export interface PathAnnotation extends AnnotationBase {
@@ -162,6 +164,10 @@ export interface ArrowHeadRenderProps {
   size: number;
 }
 
+export interface SelectOptions {
+  additive?: boolean;
+}
+
 export interface LabelRenderProps {
   annotation: Annotation;
   selected: boolean;
@@ -172,7 +178,7 @@ export interface LabelRenderProps {
   areaLabel?: string | null;
   showLabel?: boolean;
   showArea?: boolean;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, options?: SelectOptions) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
 }
 
@@ -182,7 +188,8 @@ export interface AnnotateCallbacks {
   onDelete?: (id: string) => void;
   onDraftChange?: (draft: DraftAnnotation | null) => void;
   onToolChange?: (tool: AnnotateTool) => void;
-  onSelect?: (id: string | null) => void;
+  onSelect?: (id: string | null, options?: SelectOptions) => void;
+  onSelectIds?: (ids: string[]) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
   onColorChange?: (id: string, color: string, annotation: Annotation) => void;
 }
@@ -200,6 +207,7 @@ export interface AnnotateProps extends AnnotateCallbacks {
   draft?: DraftAnnotation | null;
   tool?: AnnotateTool;
   selectedId?: string | null;
+  selectedIds?: string[];
   defaultColor?: string;
   defaultStrokeWidth?: number;
   sampleIntervalMeters?: number;
@@ -218,6 +226,7 @@ export interface AnnotateToolbarProps {
   tool?: AnnotateTool;
   onToolChange?: (tool: AnnotateTool) => void;
   selectedId?: string | null;
+  selectedIds?: string[];
   onDeleteSelected?: () => void;
   onFinish?: () => void;
   canFinish?: boolean;
@@ -234,7 +243,8 @@ export interface AnnotateToolbarProps {
 export interface AnnotateListProps {
   annotations?: Annotation[];
   selectedId?: string | null;
-  onSelect?: (id: string) => void;
+  selectedIds?: string[];
+  onSelect?: (id: string, options?: SelectOptions) => void;
   onLabelChange?: (id: string, label: string) => void;
   onColorChange?: (id: string, color: string) => void;
   onStyleChange?: (id: string, style: AnnotationStyle) => void;

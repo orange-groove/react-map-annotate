@@ -67,6 +67,16 @@ describe("isUiTarget", () => {
   it("ignores non-elements", () => {
     expect(isUiTarget(null)).toBe(false);
   });
+
+  it("treats SVG inside a marker pin as overlay UI", () => {
+    const pin = document.createElement("div");
+    pin.setAttribute("data-rma-marker", "pin-1");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    pin.append(svg);
+    document.body.append(pin);
+    expect(isUiTarget(svg)).toBe(true);
+    pin.remove();
+  });
 });
 
 describe("pointer cursors", () => {

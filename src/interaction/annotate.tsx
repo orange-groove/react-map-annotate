@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import type { AnnotateProps } from "../core/types";
-import { peekAnnotationClipboard } from "../core/utils/clipboard";
+import { peekAnnotationClipboardItems } from "../core/utils/clipboard";
 import { useMapGl } from "../engines/kit/context";
 import { AnnotateLayers } from "../paint/gl-layers";
+import { SelectionMarquee } from "../paint/marquee";
 import { AnnotationContextMenu } from "../ui/annotation-context-menu";
 import { useMapDrawing } from "./use-map-drawing";
 import { useMapKeyboard } from "./use-map-keyboard";
@@ -28,21 +29,27 @@ export function Annotate({
     draft: session.draft,
     tool: session.tool,
     selectedId: session.selectedId,
+    selectedIds: session.selectedIds,
     defaultColor: session.defaultColor,
     defaultFontFamily: session.defaultFontFamily,
     sampleIntervalMeters: session.sampleIntervalMeters,
     onAdd: session.onAdd,
+    onAddMany: session.session.onAddMany,
     onUpdate: session.onUpdate,
+    onUpdateMany: session.session.onUpdateMany,
     onDelete: session.onDelete,
     onDraftChange: session.onDraftChange,
     onToolChange: session.onToolChange,
     onSelect: session.onSelect,
     onLabelChange: session.onLabelChange,
+    setSelectedIds: session.session.setSelectedIds,
     setSelectedVertexIndex: session.session.setSelectedVertexIndex,
     undo: session.session.undo,
     redo: session.session.redo,
     endEdit: session.session.endEdit,
     removeSelected: session.session.removeSelected,
+    groupSelected: session.session.groupSelected,
+    ungroupSelected: session.session.ungroupSelected,
     trace: session.trace,
   });
   latestRef.current = {
@@ -50,21 +57,27 @@ export function Annotate({
     draft: session.draft,
     tool: session.tool,
     selectedId: session.selectedId,
+    selectedIds: session.selectedIds,
     defaultColor: session.defaultColor,
     defaultFontFamily: session.defaultFontFamily,
     sampleIntervalMeters: session.sampleIntervalMeters,
     onAdd: session.onAdd,
+    onAddMany: session.session.onAddMany,
     onUpdate: session.onUpdate,
+    onUpdateMany: session.session.onUpdateMany,
     onDelete: session.onDelete,
     onDraftChange: session.onDraftChange,
     onToolChange: session.onToolChange,
     onSelect: session.onSelect,
     onLabelChange: session.onLabelChange,
+    setSelectedIds: session.session.setSelectedIds,
     setSelectedVertexIndex: session.session.setSelectedVertexIndex,
     undo: session.session.undo,
     redo: session.session.redo,
     endEdit: session.session.endEdit,
     removeSelected: session.session.removeSelected,
+    groupSelected: session.session.groupSelected,
+    ungroupSelected: session.session.ungroupSelected,
     trace: session.trace,
   };
 
@@ -79,6 +92,7 @@ export function Annotate({
     contextMenu,
     setContextMenu,
     tracePreview,
+    marquee,
   } = useMapDrawing({
     interactive,
     latestRef,
@@ -105,6 +119,8 @@ export function Annotate({
     resolveMap,
   });
 
+  const hasSelection = session.selectedIds.length > 0;
+
   return (
     <>
       {terrain}
@@ -112,6 +128,7 @@ export function Annotate({
         annotations={session.annotations}
         draft={session.draft}
         selectedId={session.selectedId}
+        selectedIds={session.selectedIds}
         hoveredId={hoveredId}
         defaultColor={session.defaultColor}
         defaultStrokeWidth={session.defaultStrokeWidth}
@@ -129,14 +146,17 @@ export function Annotate({
           setHoverId(id);
         }}
       />
+      <SelectionMarquee rect={marquee} />
       {contextMenu ? (
         <AnnotationContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          canDuplicate={Boolean(contextMenu.annotationId)}
-          canCopy={Boolean(contextMenu.annotationId)}
-          canPaste={Boolean(peekAnnotationClipboard())}
-          canDelete={Boolean(contextMenu.annotationId)}
+          canDuplicate={hasSelection || Boolean(contextMenu.annotationId)}
+          canCopy={hasSelection || Boolean(contextMenu.annotationId)}
+          canPaste={peekAnnotationClipboardItems().length > 0}
+          canDelete={hasSelection || Boolean(contextMenu.annotationId)}
+          canGroup={session.session.canGroup}
+          canUngroup={session.session.canUngroup}
           onDuplicate={() => {
             duplicateSelected();
             setContextMenu(null);
@@ -147,6 +167,14 @@ export function Annotate({
           }}
           onPaste={() => {
             void pasteAtPointer();
+            setContextMenu(null);
+          }}
+          onGroup={() => {
+            session.session.groupSelected();
+            setContextMenu(null);
+          }}
+          onUngroup={() => {
+            session.session.ungroupSelected();
             setContextMenu(null);
           }}
           onDelete={() => {

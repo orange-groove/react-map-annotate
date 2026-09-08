@@ -74,7 +74,16 @@ export function handleMapKeyDown(
     void pasteAtPointer?.();
     return;
   }
+  if (isModLetter(event, "g") && !isAnnotationTextEdit(event.target)) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.shiftKey) latest.ungroupSelected?.();
+    else latest.groupSelected?.();
+    return;
+  }
   if (isTypingTarget(event.target)) return;
+  const ids =
+    latest.selectedIds ?? (latest.selectedId ? [latest.selectedId] : []);
   const { draft: current, selectedId: id, tool: activeTool } = latest;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
     event.preventDefault();
@@ -88,22 +97,23 @@ export function handleMapKeyDown(
     return;
   }
   if (isFinishKey(event)) {
-    if (current || isDrawingTool(activeTool)) {
+    if (current || isDrawingTool(activeTool) || activeTool === "select") {
       event.preventDefault();
       event.stopPropagation();
       finishDrawing();
     } else if (event.key === "Escape") {
-      latest.onSelect?.(null);
+      if (latest.setSelectedIds) latest.setSelectedIds([]);
+      else latest.onSelect?.(null);
     }
     return;
   }
-  if ((event.key === "Backspace" || event.key === "Delete") && id) {
+  if ((event.key === "Backspace" || event.key === "Delete") && (id || ids.length)) {
     event.preventDefault();
     if (latest.removeSelected) {
       latest.removeSelected();
       return;
     }
-    latest.onDelete?.(id);
+    if (id) latest.onDelete?.(id);
     latest.onSelect?.(null);
   }
 }

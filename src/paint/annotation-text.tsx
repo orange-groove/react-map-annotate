@@ -7,8 +7,12 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { DEFAULT_LABELS } from "../core/constants";
-import type { Annotation, TextAnnotation } from "../core/types";
+import type { Annotation, SelectOptions, TextAnnotation } from "../core/types";
 import { moveAnnotation, resizeText, textFontSize } from "../core/utils/edit";
+import {
+  isAdditiveSelect,
+  nextSelectedIds,
+} from "../core/utils/selection";
 import { handleInteraction } from "../core/utils/interaction";
 import { useMapGl } from "../engines/kit/context";
 import { startHandleDrag } from "../interaction/pointer-drag";
@@ -21,18 +25,24 @@ export function AnnotationText({
   editable,
   onSelect,
   onUpdate,
+  onUpdateMany,
   onDragEnd,
   onLabelChange,
+  annotations = [],
+  selectedIds = [],
 }: {
   annotation: TextAnnotation;
   selected: boolean;
   active: boolean;
   color: string;
   editable: boolean;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, options?: SelectOptions) => void;
   onUpdate?: (annotation: Annotation) => void;
+  onUpdateMany?: (annotations: Annotation[]) => void;
   onDragEnd?: (id: string) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
+  annotations?: Annotation[];
+  selectedIds?: string[];
 }) {
   const { Marker, useMap } = useMapGl();
   const maps = useMap();
@@ -69,13 +79,30 @@ export function AnnotationText({
     if (editing) return;
     const map = maps.current?.getMap();
     if (!map) return;
-    onSelect?.(annotation.id);
+    const additive = isAdditiveSelect(event);
+    const already = selectedIds.includes(annotation.id);
+    const nextIds =
+      already && !additive
+        ? selectedIds
+        : nextSelectedIds(annotations, selectedIds, annotation.id, additive);
+    if (!already || additive) {
+      if (additive) onSelect?.(annotation.id, { additive: true });
+      else onSelect?.(annotation.id);
+    }
+    if (additive) return;
+    const originals = annotations.filter((item) => nextIds.includes(item.id));
     originRef.current = annotation;
     startHandleDrag(
       event,
       map,
       annotation.coordinate,
       (point, grab) => {
+        if (originals.length > 1 && onUpdateMany) {
+          onUpdateMany(
+            originals.map((item) => moveAnnotation(item, grab.from, point)),
+          );
+          return;
+        }
         onUpdate?.(moveAnnotation(originRef.current, grab.from, point));
       },
       () => onDragEnd?.(annotation.id),
