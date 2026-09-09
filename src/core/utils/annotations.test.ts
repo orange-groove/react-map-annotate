@@ -175,7 +175,8 @@ describe("annotationFromDraft", () => {
     if (annotation?.kind !== "measure") return;
     expect(annotation.measurement?.distanceMeters).toBeCloseTo(120, 1);
     expect(annotation.measurement?.samples.length).toBeGreaterThanOrEqual(13);
-    expect(annotation.label).toContain("m");
+    expect(annotation.caption).toContain("m");
+    expect(annotation.label).toBe(DEFAULT_LABELS.measure);
   });
 
   it("rejects incomplete drafts for every kind", () => {

@@ -3,6 +3,36 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.13
+
+A session-versus-persist pass, from integration feedback on an app that keeps
+annotations in its own store and PATCHes on idle.
+
+- `onCommit(annotations, meta)` on `AnnotateProvider` fires once when a gesture
+  ends and for every discrete change. `onChange` now also receives `meta`, with
+  `reason: "live" | "commit"`, a `cause`, and the `ids` touched. Existing
+  single-argument `onChange` handlers keep working.
+- `isEditing` on `useAnnotate()`.
+- Controlled mode no longer fights the host: incoming `annotations` are ignored
+  while a gesture is in flight, an array handed straight back is recognised as
+  our own echo by reference, and a host remap that leaves geometry alone is
+  adopted without clearing undo. Replaces the one-shot internal commit flag that
+  could swallow a real update.
+- `visible: false` hides an annotation from paint and hit-testing. `data` is a
+  passthrough bag for host fields, cloned with the annotation for undo.
+- `caption` carries library-derived text. A measure writes its distance there
+  instead of overwriting `label`, which is now host-owned for good.
+- Honest style fields: `strokeOpacity` (was hardcoded 0.95 across four paint
+  paths), `fillOpacity` as the resting fill, and `hoverFillOpacity` for hover.
+  Area outlines now honour `strokeWidth`. **Behaviour change:** `fillOpacity`
+  used to apply only on hover; set `hoverFillOpacity` for the old effect.
+- `Annotate` waits for the map style to load before adding sources, so an
+  `enableTerrain` restyle no longer unmounts the layers. New `onStyleReady`.
+- `annotateClickTarget(features)` reports `{ consumed, id }` so a host can tell
+  whether a map click already belonged to the annotation session.
+- Circles paint from `center` + `radiusMeters`; the ring is regenerated at paint
+  time rather than trusted from a round-tripped array.
+
 ## 0.3.12
 
 - Keep handles black instead of color of annotation.

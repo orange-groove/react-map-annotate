@@ -1,11 +1,14 @@
 import {
   DEFAULT_COLOR,
+  DEFAULT_HOVER_FILL_OPACITY,
+  DEFAULT_STROKE_OPACITY,
   DEFAULT_STROKE_WIDTH,
   arrowHeadSize,
   isPointTool,
 } from "../constants";
 import type {
   Annotation,
+  AreaAnnotation,
   DraftAnnotation,
   LngLat,
   MarkerAnnotation,
@@ -52,6 +55,44 @@ function annotationColor(
   return annotation.style?.color ?? fallback;
 }
 
+/** Paint and hit-testing skip anything the host has hidden. */
+export function isAnnotationVisible(annotation: Annotation): boolean {
+  return annotation.visible !== false;
+}
+
+export function visibleAnnotations(annotations: Annotation[]): Annotation[] {
+  return annotations.filter(isAnnotationVisible);
+}
+
+function strokeOpacityFor(annotation: { style?: { strokeOpacity?: number } }) {
+  return annotation.style?.strokeOpacity ?? DEFAULT_STROKE_OPACITY;
+}
+
+function fillOpacityFor(annotation: AreaAnnotation, hovered: boolean): number {
+  const resting = annotation.style?.fillOpacity ?? 0;
+  if (!hovered) return resting;
+  return (
+    annotation.style?.hoverFillOpacity ??
+    Math.max(resting, DEFAULT_HOVER_FILL_OPACITY)
+  );
+}
+
+/**
+ * Circles are stored as center + radius. The ring is a paint detail, so it is
+ * regenerated here rather than trusted from whatever the host round-tripped.
+ */
+export function areaRing(annotation: AreaAnnotation): LngLat[] {
+  if (
+    annotation.kind === "circle" &&
+    annotation.center &&
+    annotation.radiusMeters &&
+    annotation.radiusMeters > 0
+  ) {
+    return circleRing(annotation.center, annotation.radiusMeters);
+  }
+  return annotation.coordinates;
+}
+
 function lineFeature(
   id: string,
   kind: string,
@@ -59,10 +100,11 @@ function lineFeature(
   selected: boolean,
   color: string,
   strokeWidth: number,
+  strokeOpacity: number = DEFAULT_STROKE_OPACITY,
 ): GeoJSON.Feature<GeoJSON.LineString> {
   return {
     type: "Feature",
-    properties: { id, kind, selected, color, strokeWidth },
+    properties: { id, kind, selected, color, strokeWidth, strokeOpacity },
     geometry: { type: "LineString", coordinates },
   };
 }
@@ -74,10 +116,20 @@ function polygonFeature(
   selected: boolean,
   color: string,
   fillOpacity: number,
+  strokeWidth: number = DEFAULT_STROKE_WIDTH,
+  strokeOpacity: number = DEFAULT_STROKE_OPACITY,
 ): GeoJSON.Feature<GeoJSON.Polygon> {
   return {
     type: "Feature",
-    properties: { id, kind, selected, color, fillOpacity },
+    properties: {
+      id,
+      kind,
+      selected,
+      color,
+      fillOpacity,
+      strokeWidth,
+      strokeOpacity,
+    },
     geometry: { type: "Polygon", coordinates: [coordinates] },
   };
 }
@@ -191,6 +243,7 @@ export function buildAnnotationFeatures({
   const markers: MarkerAnnotation[] = [];
 
   for (const annotation of annotations) {
+    if (!isAnnotationVisible(annotation)) continue;
     const selected = selectedIds?.length
       ? selectedIds.includes(annotation.id)
       : annotation.id === selectedId;
@@ -205,6 +258,7 @@ export function buildAnnotationFeatures({
           selected,
           color,
           strokeWidth,
+          strokeOpacityFor(annotation),
         ),
       );
       arrows.push(...arrowsFor(annotation, color, selected, strokeWidth));
@@ -234,12 +288,12 @@ export function buildAnnotationFeatures({
         polygonFeature(
           annotation.id,
           annotation.kind,
-          annotation.coordinates,
+          areaRing(annotation),
           selected,
           color,
-          annotation.id === hoveredId
-            ? (annotation.style?.fillOpacity ?? 0.18)
-            : 0,
+          fillOpacityFor(annotation, annotation.id === hoveredId),
+          annotation.style?.strokeWidth ?? defaultStrokeWidth,
+          strokeOpacityFor(annotation),
         ),
       );
     } else if (isMarkerAnnotation(annotation)) {

@@ -154,6 +154,36 @@ see [`examples/custom-toolbar.tsx`](./examples/custom-toolbar.tsx). For a
 sidebar that names, recolors, and deletes rows, see
 [`examples/custom-list.tsx`](./examples/custom-list.tsx).
 
+### Persist on commit, not on every pointermove
+
+`onChange` fires continuously while a shape is being dragged. `onCommit` fires
+once when the gesture ends, and for every discrete change (add, delete, style,
+label, group, undo, redo). Paint from `onChange`, persist from `onCommit`.
+
+```tsx
+<AnnotateProvider
+  annotations={annotations}
+  onChange={setAnnotations}
+  onCommit={(next, meta) => {
+    void fetch("/api/annotations", {
+      method: "PATCH",
+      body: JSON.stringify({ annotations: next, changed: meta.ids }),
+    });
+  }}
+>
+```
+
+Both callbacks receive `(annotations, meta)`. `meta.reason` is `"live"` or
+`"commit"`, `meta.cause` names the change (`add`, `edit`, `style`, `label`,
+`delete`, `group`, `ungroup`, `undo`, `redo`, `set`), and `meta.ids` lists the
+annotations it touched. `useAnnotate()` also exposes `isEditing` if your own UI
+needs to know a gesture is in flight.
+
+In controlled mode the provider ignores incoming `annotations` while a gesture
+is running, and treats an array you hand straight back as your echo rather than
+new truth. Remapping colors or adding your own fields on the way through no
+longer resets undo or fights the drag.
+
 ### Persist annotations to a database
 
 `onChange` fires on add, move, resize, label, color, and delete. Put
@@ -306,6 +336,65 @@ disagree with the basemap. Leaflet or ArcGIS on OSM tiles will match more
 closely.
 
 `trace={false}` turns Trace off on every engine, including Mapbox and MapLibre.
+
+## Host fields on an annotation
+
+`data` is a passthrough bag the library never reads, and `visible: false` hides
+an annotation from paint and hit-testing without removing it from the array. Use
+them instead of keeping a parallel list and merging it back on every change.
+
+```tsx
+const next: Annotation = {
+  ...annotation,
+  visible: false,
+  data: { layerId, sortOrder, featureId },
+};
+```
+
+`data` is cloned with `structuredClone` for undo, so it must hold plain JSON —
+no functions, class instances, or store handles.
+
+`label` is yours and the library never overwrites it. Derived text lives on
+`caption`: a measure writes its distance there and repaints it on every edit,
+so a sidebar can show "Measurement 3" while the map shows `1.2 km`.
+
+## Styling strokes and fills
+
+| Field              | What it does                                            |
+| ------------------ | ------------------------------------------------------- |
+| `color`            | Stroke and fill color.                                  |
+| `strokeWidth`      | Line width, and area outline width.                     |
+| `strokeOpacity`    | Stroke alpha. Defaults to 0.95.                         |
+| `fillOpacity`      | Resting fill alpha for areas. Defaults to 0.            |
+| `hoverFillOpacity` | Fill alpha on hover. Defaults to `fillOpacity` or 0.18. |
+
+Keep `color` to `#RRGGBB` or a CSS color. Mapbox and MapLibre read the color
+from a data property, and 8-digit `#RRGGBBAA` is not valid there — the shaft
+falls back to black while SVG arrow heads still honor it. Put the alpha in
+`strokeOpacity` or `fillOpacity` instead.
+
+## Mounting alongside your own layers
+
+`Annotate` waits for the map style to load before adding its sources, so
+`enableTerrain` restyles no longer drop the annotation layers. `onStyleReady`
+fires once they are mounted.
+
+When your app selects its own layers on the same map, ask whether a click was
+already ours:
+
+```tsx
+import { annotateClickTarget } from "@orange-groove/react-map-annotate/core";
+
+map.on("click", (event) => {
+  const { consumed, id } = annotateClickTarget(
+    map.queryRenderedFeatures(event.point),
+  );
+  if (consumed) return; // the annotation session handled it
+  selectProjectFeature(event);
+});
+```
+
+`isAnnotateLayerId(layerId)` is the lower-level check if you need it.
 
 ## Fonts
 

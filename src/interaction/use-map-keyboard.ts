@@ -107,7 +107,10 @@ export function handleMapKeyDown(
     }
     return;
   }
-  if ((event.key === "Backspace" || event.key === "Delete") && (id || ids.length)) {
+  if (
+    (event.key === "Backspace" || event.key === "Delete") &&
+    (id || ids.length)
+  ) {
     event.preventDefault();
     if (latest.removeSelected) {
       latest.removeSelected();

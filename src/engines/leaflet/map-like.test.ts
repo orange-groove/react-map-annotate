@@ -103,15 +103,13 @@ describe("getLeafletMapLike", () => {
         y: 20,
         toJSON: () => undefined,
       }) as DOMRect;
-    map
-      .getContainer()
-      .dispatchEvent(
-        new PointerEvent("pointermove", {
-          clientX: 22,
-          clientY: 28,
-          bubbles: true,
-        }),
-      );
+    map.getContainer().dispatchEvent(
+      new PointerEvent("pointermove", {
+        clientX: 22,
+        clientY: 28,
+        bubbles: true,
+      }),
+    );
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
         point: { x: 12, y: 8 },

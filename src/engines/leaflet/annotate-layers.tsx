@@ -1,7 +1,11 @@
 "use client";
 
 import { Polygon, Polyline } from "react-leaflet";
-import { DEFAULT_COLOR, DEFAULT_STROKE_WIDTH } from "../../core/constants";
+import {
+  DEFAULT_COLOR,
+  DEFAULT_STROKE_OPACITY,
+  DEFAULT_STROKE_WIDTH,
+} from "../../core/constants";
 import type { AnnotateProps, LngLat } from "../../core/types";
 import { buildAnnotationFeatures } from "../../core/utils/features";
 import { AnnotateChrome } from "../../paint/chrome";
@@ -74,8 +78,14 @@ export function LeafletAnnotateLayers({
               color: featureColor,
               fillColor: featureColor,
               fillOpacity: Number(feature.properties?.fillOpacity ?? 0),
-              weight: skipOutline ? 0 : strokeWidth,
-              opacity: skipOutline ? 0 : 1,
+              weight: skipOutline
+                ? 0
+                : Number(feature.properties?.strokeWidth ?? strokeWidth),
+              opacity: skipOutline
+                ? 0
+                : Number(
+                    feature.properties?.strokeOpacity ?? DEFAULT_STROKE_OPACITY,
+                  ),
             }}
           />
         );
@@ -111,7 +121,9 @@ export function LeafletAnnotateLayers({
           pathOptions={{
             color: String(feature.properties?.color ?? color),
             weight: Number(feature.properties?.strokeWidth ?? strokeWidth),
-            opacity: 0.95,
+            opacity: Number(
+              feature.properties?.strokeOpacity ?? DEFAULT_STROKE_OPACITY,
+            ),
           }}
         />
       ))}

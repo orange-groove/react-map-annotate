@@ -195,10 +195,7 @@ describe("AnnotateList", () => {
       label: "South fence",
     };
     render(
-      <AnnotateList
-        annotations={[line, other]}
-        selectedIds={["l1", "l2"]}
-      />,
+      <AnnotateList annotations={[line, other]} selectedIds={["l1", "l2"]} />,
     );
     const items = screen.getAllByRole("listitem");
     expect(items[0]?.getAttribute("aria-selected")).toBe("true");

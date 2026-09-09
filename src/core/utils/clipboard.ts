@@ -48,13 +48,12 @@ export function parseAnnotationClipboardItems(text: string): Annotation[] {
       if (version === 2 && "annotations" in data) {
         const items = (data as { annotations: unknown }).annotations;
         return Array.isArray(items)
-          ? items.map(asAnnotation).filter((item): item is Annotation => item != null)
+          ? items
+              .map(asAnnotation)
+              .filter((item): item is Annotation => item != null)
           : [];
       }
-      if (
-        version === 1 &&
-        "annotation" in data
-      ) {
+      if (version === 1 && "annotation" in data) {
         const item = asAnnotation((data as { annotation: unknown }).annotation);
         return item ? [item] : [];
       }

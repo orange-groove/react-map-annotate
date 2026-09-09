@@ -40,6 +40,8 @@ export const MIN_STROKE_WIDTH = 1;
 export const MAX_STROKE_WIDTH = 16;
 export const DEFAULT_ARROW_HEAD_SIZE = 26;
 export const MIN_ARROW_HEAD_SIZE = 12;
+export const DEFAULT_STROKE_OPACITY = 0.95;
+export const DEFAULT_HOVER_FILL_OPACITY = 0.18;
 
 export function clampStrokeWidth(width: number): number {
   return Math.min(

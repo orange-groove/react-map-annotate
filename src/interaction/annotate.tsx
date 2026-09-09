@@ -11,6 +11,7 @@ import { AnnotationContextMenu } from "../ui/annotation-context-menu";
 import { useMapDrawing } from "./use-map-drawing";
 import { useMapKeyboard } from "./use-map-keyboard";
 import { useMapSession } from "./use-map-session";
+import { useMapStyleReady } from "./use-map-style-ready";
 import { useMapTerrain } from "./use-map-terrain";
 
 export function Annotate({
@@ -18,6 +19,7 @@ export function Annotate({
   terrainSource,
   interactive = true,
   labelsEditable = true,
+  onStyleReady,
   renderArrowHead,
   renderLabel,
   ...props
@@ -120,7 +122,11 @@ export function Annotate({
     resolveMap,
   });
 
+  const styleReady = useMapStyleReady({ resolveMap, onStyleReady });
+
   const hasSelection = session.selectedIds.length > 0;
+
+  if (!styleReady) return <>{terrain}</>;
 
   return (
     <>

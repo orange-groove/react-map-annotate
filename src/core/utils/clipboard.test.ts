@@ -76,7 +76,10 @@ describe("placeAnnotationsAt", () => {
   it("moves the set together and remaps group ids", () => {
     const groupedLine = { ...line, groupId: "g1" };
     const groupedPin = { ...pin, groupId: "g1" };
-    const placed = placeAnnotationsAt([groupedPin, groupedLine], [-73.97, 40.76]);
+    const placed = placeAnnotationsAt(
+      [groupedPin, groupedLine],
+      [-73.97, 40.76],
+    );
     expect(placed).toHaveLength(2);
     expect(placed[0]?.id).not.toBe(pin.id);
     expect(placed[0]?.groupId).toBeTruthy();

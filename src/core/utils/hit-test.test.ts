@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Annotation } from "../types";
 import {
+  annotateClickTarget,
   annotationVisualScreenBounds,
   distanceToSegment,
   groupVisualScreenBounds,
@@ -69,6 +70,20 @@ describe("hitTestAnnotations", () => {
       [2, 2],
     ],
   };
+
+  it("ignores annotations the host has hidden", () => {
+    expect(
+      hitTestAnnotations(project, { x: 50, y: 4 }, [
+        { ...line, visible: false },
+      ]),
+    ).toBeNull();
+    expect(
+      idsInScreenRect(project, { x: -10, y: -10, width: 400, height: 400 }, [
+        { ...line, visible: false },
+        polygon,
+      ]),
+    ).toEqual(["poly-1"]);
+  });
 
   it("hits a line within 9 pixels", () => {
     expect(hitTestAnnotations(project, { x: 50, y: 4 }, [line])).toBe("line-1");
@@ -312,5 +327,33 @@ describe("group visual screen bounds", () => {
       { x: 30, y: 60, width: 27, height: 40 },
       { x: 20, y: 30, width: 48, height: 22 },
     ]);
+  });
+});
+
+describe("annotateClickTarget", () => {
+  it("reports a click the library consumed, with the annotation id", () => {
+    expect(
+      annotateClickTarget([
+        { layer: { id: "rma-line" }, properties: { id: "a1" } },
+        { layer: { id: "roads" }, properties: { id: "road-9" } },
+      ]),
+    ).toEqual({ consumed: true, id: "a1" });
+  });
+
+  it("consumes draft geometry without naming an annotation", () => {
+    expect(
+      annotateClickTarget([
+        { layer: { id: "rma-fill" }, properties: { id: "draft" } },
+      ]),
+    ).toEqual({ consumed: true, id: null });
+  });
+
+  it("leaves host layers alone", () => {
+    expect(
+      annotateClickTarget([
+        { layer: { id: "project-outline" }, properties: { id: "p7" } },
+      ]),
+    ).toEqual({ consumed: false, id: null });
+    expect(annotateClickTarget([])).toEqual({ consumed: false, id: null });
   });
 });

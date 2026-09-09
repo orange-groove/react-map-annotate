@@ -48,9 +48,7 @@ function createKit(getMap?: () => unknown) {
     }) => (
       <div
         data-testid="marker"
-        onClick={(event) =>
-          onClick?.({ originalEvent: event.nativeEvent })
-        }
+        onClick={(event) => onClick?.({ originalEvent: event.nativeEvent })}
       >
         {children}
       </div>

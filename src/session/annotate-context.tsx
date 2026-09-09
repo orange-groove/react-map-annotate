@@ -18,6 +18,8 @@ import type {
   Annotation,
   AnnotationStyle,
   AnnotateTool,
+  ChangeCause,
+  ChangeMeta,
   DraftAnnotation,
   SelectOptions,
   TraceOption,
@@ -47,7 +49,12 @@ import {
   editableVertices,
   removeVertex,
 } from "../core/utils/edit";
-import { HISTORY_LIMIT, annotationsEqual, cloneAnnotations } from "./history";
+import {
+  HISTORY_LIMIT,
+  annotationsEqual,
+  cloneAnnotations,
+  sameGeometry,
+} from "./history";
 import { AnnotateFontLoader } from "./annotate-fonts";
 import { resolveAnnotateFonts } from "../core/utils/fonts";
 
@@ -83,6 +90,8 @@ export interface AnnotateSession {
   registerFinish: (fn: (() => void) | null) => void;
   beginEdit: () => void;
   endEdit: () => void;
+  /** True between the first live edit of a gesture and its commit. */
+  isEditing: boolean;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -106,7 +115,9 @@ export interface AnnotateProviderProps extends AnnotateCallbacks {
   tool?: AnnotateTool;
   selectedId?: string | null;
   selectedIds?: string[];
-  onChange?: (annotations: Annotation[]) => void;
+  onChange?: (annotations: Annotation[], meta: ChangeMeta) => void;
+  /** Fires only when a gesture ends or a discrete change lands. Persist here. */
+  onCommit?: (annotations: Annotation[], meta: ChangeMeta) => void;
   fonts?: AnnotateFont[];
   defaultFontFamily?: string;
   showLabels?: boolean;
@@ -126,6 +137,7 @@ export function AnnotateProvider({
   selectedId: selectedIdProp,
   selectedIds: selectedIdsProp,
   onChange,
+  onCommit,
   onAdd: onAddProp,
   onUpdate: onUpdateProp,
   onDelete: onDeleteProp,
@@ -158,8 +170,11 @@ export function AnnotateProvider({
   const pastRef = useRef<Annotation[][]>([]);
   const futureRef = useRef<Annotation[][]>([]);
   const editingRef = useRef(false);
-  const lastCommittedRef = useRef<Annotation[] | undefined>(undefined);
-  const internalCommitRef = useRef(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const liveIdsRef = useRef<Set<string>>(new Set());
+  // The exact array last handed to onChange. A controlled host that passes it
+  // straight back is echoing us, not supplying new truth.
+  const lastEmittedRef = useRef<Annotation[] | undefined>(undefined);
 
   const annotations = annotationsState;
   const annotationsRef = useRef(annotations);
@@ -189,22 +204,29 @@ export function AnnotateProvider({
     futureRef.current = [];
   }, []);
 
-  const commitAnnotations = useCallback(
-    (next: Annotation[]) => {
-      annotationsRef.current = next;
-      lastCommittedRef.current = next;
-      internalCommitRef.current = true;
-      setAnnotationsState(next);
-      onChange?.(next);
+  const notify = useCallback(
+    (next: Annotation[], meta: ChangeMeta) => {
+      lastEmittedRef.current = next;
+      onChange?.(next, meta);
+      if (meta.reason === "commit") onCommit?.(next, meta);
     },
-    [onChange],
+    [onChange, onCommit],
+  );
+
+  const commitAnnotations = useCallback(
+    (next: Annotation[], meta: ChangeMeta) => {
+      annotationsRef.current = next;
+      setAnnotationsState(next);
+      notify(next, meta);
+    },
+    [notify],
   );
 
   const recordCommit = useCallback(
-    (next: Annotation[]) => {
+    (next: Annotation[], cause: ChangeCause, ids: string[] = []) => {
       if (annotationsEqual(annotationsRef.current, next)) return;
       if (!editingRef.current) pushPast();
-      commitAnnotations(next);
+      commitAnnotations(next, { reason: "commit", cause, ids });
       syncHistoryFlags();
     },
     [commitAnnotations, pushPast, syncHistoryFlags],
@@ -214,18 +236,29 @@ export function AnnotateProvider({
     if (editingRef.current) return;
     pushPast();
     editingRef.current = true;
+    setIsEditing(true);
     syncHistoryFlags();
   }, [pushPast, syncHistoryFlags]);
 
   const endEdit = useCallback(() => {
     if (!editingRef.current) return;
     editingRef.current = false;
+    setIsEditing(false);
     const last = pastRef.current[pastRef.current.length - 1];
     if (last && annotationsEqual(last, annotationsRef.current)) {
       pastRef.current = pastRef.current.slice(0, -1);
     }
     syncHistoryFlags();
-  }, [syncHistoryFlags]);
+    const ids = [...liveIdsRef.current];
+    liveIdsRef.current.clear();
+    if (ids.length > 0) {
+      notify(annotationsRef.current, {
+        reason: "commit",
+        cause: "edit",
+        ids,
+      });
+    }
+  }, [notify, syncHistoryFlags]);
 
   const undo = useCallback(() => {
     if (editingRef.current) endEdit();
@@ -236,7 +269,11 @@ export function AnnotateProvider({
       ...futureRef.current,
       cloneAnnotations(annotationsRef.current),
     ];
-    commitAnnotations(cloneAnnotations(previous));
+    commitAnnotations(cloneAnnotations(previous), {
+      reason: "commit",
+      cause: "undo",
+      ids: [],
+    });
     selectedVertexIndexRef.current = null;
     setSelectedVertexIndexState(null);
     syncHistoryFlags();
@@ -251,7 +288,11 @@ export function AnnotateProvider({
       ...pastRef.current,
       cloneAnnotations(annotationsRef.current),
     ].slice(-HISTORY_LIMIT);
-    commitAnnotations(cloneAnnotations(next));
+    commitAnnotations(cloneAnnotations(next), {
+      reason: "commit",
+      cause: "redo",
+      ids: [],
+    });
     selectedVertexIndexRef.current = null;
     setSelectedVertexIndexState(null);
     syncHistoryFlags();
@@ -263,7 +304,7 @@ export function AnnotateProvider({
     (action) => {
       const next =
         typeof action === "function" ? action(annotationsRef.current) : action;
-      recordCommit(next);
+      recordCommit(next, "set");
     },
     [recordCommit],
   );
@@ -291,7 +332,11 @@ export function AnnotateProvider({
   const onAdd = useCallback(
     (annotation: Annotation) => {
       endEdit();
-      recordCommit(upsertAnnotation(annotationsRef.current, annotation));
+      recordCommit(
+        upsertAnnotation(annotationsRef.current, annotation),
+        "add",
+        [annotation.id],
+      );
       applySelection([annotation.id]);
       setDraftState(null);
       onAddProp?.(annotation);
@@ -303,7 +348,11 @@ export function AnnotateProvider({
     (items: Annotation[]) => {
       if (items.length === 0) return;
       endEdit();
-      recordCommit(upsertAnnotations(annotationsRef.current, items));
+      recordCommit(
+        upsertAnnotations(annotationsRef.current, items),
+        "add",
+        items.map((item) => item.id),
+      );
       applySelection(items.map((item) => item.id));
       setDraftState(null);
       for (const item of items) onAddProp?.(item);
@@ -314,7 +363,12 @@ export function AnnotateProvider({
   const onUpdate = useCallback(
     (annotation: Annotation) => {
       beginEdit();
-      commitAnnotations(upsertAnnotation(annotationsRef.current, annotation));
+      liveIdsRef.current.add(annotation.id);
+      commitAnnotations(upsertAnnotation(annotationsRef.current, annotation), {
+        reason: "live",
+        cause: "edit",
+        ids: [annotation.id],
+      });
       onUpdateProp?.(annotation);
     },
     [beginEdit, commitAnnotations, onUpdateProp],
@@ -324,7 +378,13 @@ export function AnnotateProvider({
     (items: Annotation[]) => {
       if (items.length === 0) return;
       beginEdit();
-      commitAnnotations(upsertAnnotations(annotationsRef.current, items));
+      const ids = items.map((item) => item.id);
+      for (const id of ids) liveIdsRef.current.add(id);
+      commitAnnotations(upsertAnnotations(annotationsRef.current, items), {
+        reason: "live",
+        cause: "edit",
+        ids,
+      });
       for (const item of items) onUpdateProp?.(item);
     },
     [beginEdit, commitAnnotations, onUpdateProp],
@@ -333,7 +393,9 @@ export function AnnotateProvider({
   const onDelete = useCallback(
     (id: string) => {
       endEdit();
-      recordCommit(removeAnnotation(annotationsRef.current, id));
+      recordCommit(removeAnnotation(annotationsRef.current, id), "delete", [
+        id,
+      ]);
       const remaining = selectedIdsRef.current.filter((item) => item !== id);
       selectedIdsRef.current = remaining;
       if (selectedIdRef.current === id) {
@@ -397,7 +459,11 @@ export function AnnotateProvider({
   const onLabelChange = useCallback(
     (id: string, label: string, annotation: Annotation) => {
       endEdit();
-      recordCommit(upsertAnnotation(annotationsRef.current, annotation));
+      recordCommit(
+        upsertAnnotation(annotationsRef.current, annotation),
+        "label",
+        [id],
+      );
       onLabelChangeProp?.(id, label, annotation);
     },
     [endEdit, onLabelChangeProp, recordCommit],
@@ -437,7 +503,11 @@ export function AnnotateProvider({
       if (!match) return;
       const annotation = setAnnotationColor(match, color);
       endEdit();
-      recordCommit(upsertAnnotation(annotationsRef.current, annotation));
+      recordCommit(
+        upsertAnnotation(annotationsRef.current, annotation),
+        "style",
+        [id],
+      );
       onColorChangeProp?.(id, color, annotation);
     },
     [endEdit, onColorChangeProp, recordCommit],
@@ -451,7 +521,11 @@ export function AnnotateProvider({
       if (!match) return;
       const annotation = setAnnotationStyle(match, style);
       endEdit();
-      recordCommit(upsertAnnotation(annotationsRef.current, annotation));
+      recordCommit(
+        upsertAnnotation(annotationsRef.current, annotation),
+        "style",
+        [id],
+      );
     },
     [endEdit, recordCommit],
   );
@@ -468,7 +542,9 @@ export function AnnotateProvider({
       if (match && vertexIndex != null && canRemoveVertex(match, vertexIndex)) {
         const next = removeVertex(match, vertexIndex);
         endEdit();
-        recordCommit(upsertAnnotation(annotationsRef.current, next));
+        recordCommit(upsertAnnotation(annotationsRef.current, next), "edit", [
+          id,
+        ]);
         const vertices = editableVertices(next);
         setSelectedVertexIndexState(
           vertices.length === 0
@@ -482,7 +558,7 @@ export function AnnotateProvider({
       return;
     }
     endEdit();
-    recordCommit(removeAnnotations(annotationsRef.current, ids));
+    recordCommit(removeAnnotations(annotationsRef.current, ids), "delete", ids);
     for (const item of ids) onDeleteProp?.(item);
     applySelection([]);
   }, [
@@ -498,7 +574,7 @@ export function AnnotateProvider({
     const ids = selectedIdsRef.current;
     if (!canGroupAnnotations(annotationsRef.current, ids)) return;
     endEdit();
-    recordCommit(groupAnnotations(annotationsRef.current, ids));
+    recordCommit(groupAnnotations(annotationsRef.current, ids), "group", ids);
     applySelection(expandGroupIds(annotationsRef.current, ids), false);
   }, [applySelection, endEdit, recordCommit]);
 
@@ -506,28 +582,35 @@ export function AnnotateProvider({
     const ids = selectedIdsRef.current;
     if (!canUngroupAnnotations(annotationsRef.current, ids)) return;
     endEdit();
-    recordCommit(ungroupAnnotations(annotationsRef.current, ids));
+    recordCommit(
+      ungroupAnnotations(annotationsRef.current, ids),
+      "ungroup",
+      ids,
+    );
   }, [endEdit, recordCommit]);
 
   useEffect(() => {
     if (annotationsProp === undefined) return;
-    if (internalCommitRef.current) {
-      internalCommitRef.current = false;
-      lastCommittedRef.current = annotationsProp;
-      return;
-    }
-    if (annotationsEqual(annotationsProp, annotationsRef.current)) {
-      lastCommittedRef.current = annotationsProp;
-      return;
-    }
+    // Our own echo, handed straight back by the host.
+    if (annotationsProp === lastEmittedRef.current) return;
+    // Never swap geometry out from under an in-flight gesture. The host gets
+    // the authoritative array again on endEdit.
+    if (editingRef.current) return;
+    if (annotationsEqual(annotationsProp, annotationsRef.current)) return;
+    // A host remap (colour normalising, dropped fields, re-ordered keys) leaves
+    // geometry alone, so adopt it without throwing away undo.
+    const geometryChanged = !sameGeometry(
+      annotationsProp,
+      annotationsRef.current,
+    );
     annotationsRef.current = annotationsProp;
     setAnnotationsState(cloneAnnotations(annotationsProp));
-    pastRef.current = [];
-    futureRef.current = [];
-    editingRef.current = false;
-    lastCommittedRef.current = annotationsProp;
-    setCanUndo(false);
-    setCanRedo(false);
+    if (geometryChanged) {
+      pastRef.current = [];
+      futureRef.current = [];
+      setCanUndo(false);
+      setCanRedo(false);
+    }
   }, [annotationsProp]);
 
   const value = useMemo<AnnotateSession>(
@@ -563,6 +646,7 @@ export function AnnotateProvider({
       registerFinish,
       beginEdit,
       endEdit,
+      isEditing,
       undo,
       redo,
       canUndo,
@@ -587,6 +671,7 @@ export function AnnotateProvider({
       fonts,
       defaultFontFamily,
       groupSelected,
+      isEditing,
       onAdd,
       onAddMany,
       onDelete,

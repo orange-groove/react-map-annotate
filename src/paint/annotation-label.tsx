@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { useMapGl } from "../engines/kit/context";
-import type { Annotation, LabelRenderProps, SelectOptions } from "../core/types";
+import type {
+  Annotation,
+  LabelRenderProps,
+  SelectOptions,
+} from "../core/types";
 import { isAdditiveSelect } from "../core/utils/selection";
 import { annotationAreaMeters } from "../core/utils/annotations";
 import { formatArea } from "../core/utils/geo";
@@ -59,8 +63,9 @@ export function AnnotationLabel({
   const areaLabel =
     showArea && areaMeters != null ? formatArea(areaMeters) : null;
   const name = showLabel ? annotation.label.trim() : "";
+  const caption = annotation.caption?.trim() || null;
 
-  if (!editing && !name && !render && !areaLabel) return null;
+  if (!editing && !name && !render && !areaLabel && !caption) return null;
 
   const labelClassName = [
     "rma-label",
@@ -78,6 +83,7 @@ export function AnnotationLabel({
     latitude,
     offset,
     areaLabel,
+    caption,
     showLabel,
     showArea,
     onSelect,
@@ -154,6 +160,7 @@ export function AnnotationLabel({
               {annotation.label}
             </button>
           ) : null}
+          {caption ? <div className="rma-label-area">{caption}</div> : null}
           {areaLabel ? <div className="rma-label-area">{areaLabel}</div> : null}
         </div>
       )}

@@ -237,12 +237,13 @@ describe("path endpoints", () => {
     expect(movePathEndpoint(line, "end", origin)).toBe(line);
   });
 
-  it("recomputes measure distance and the derived label", () => {
+  it("recomputes measure distance into the caption, leaving the label alone", () => {
     const measurement = measurePath([origin, east]);
     const measure: PathAnnotation = {
       id: "measure",
       kind: "measure",
-      label: formatMeasurement(measurement),
+      label: "Measurement 3",
+      caption: formatMeasurement(measurement),
       coordinates: [origin, east],
       measurement,
     };
@@ -252,7 +253,8 @@ describe("path endpoints", () => {
       haversineDistance(origin, west),
       1,
     );
-    expect(next.label).toBe(formatMeasurement(next.measurement!));
+    expect(next.caption).toBe(formatMeasurement(next.measurement!));
+    expect(next.label).toBe("Measurement 3");
   });
 
   it("keeps a custom measure label", () => {

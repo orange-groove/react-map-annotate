@@ -544,17 +544,11 @@ function withPathCoordinates(
       (coordinate) => queryGroundElevation(options.map, coordinate),
       options.sampleIntervalMeters,
     );
-    const previousLabel = annotation.measurement
-      ? formatMeasurement(annotation.measurement)
-      : annotation.label;
     return {
       ...annotation,
       coordinates,
       measurement,
-      label:
-        annotation.label === previousLabel
-          ? formatMeasurement(measurement)
-          : annotation.label,
+      caption: formatMeasurement(measurement),
     };
   }
 

@@ -9,10 +9,7 @@ import type {
   SelectOptions,
 } from "../core/types";
 import { moveAnnotation } from "../core/utils/edit";
-import {
-  isAdditiveSelect,
-  nextSelectedIds,
-} from "../core/utils/selection";
+import { isAdditiveSelect, nextSelectedIds } from "../core/utils/selection";
 import { startHandleDrag } from "../interaction/pointer-drag";
 
 function DefaultPin({ color, scale = 1 }: { color?: string; scale?: number }) {

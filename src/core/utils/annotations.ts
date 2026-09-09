@@ -340,7 +340,7 @@ export function annotationFromDraft(
         interval,
       );
       annotation.measurement = measurement;
-      annotation.label = formatMeasurement(measurement);
+      annotation.caption = formatMeasurement(measurement);
     }
 
     return annotation;
@@ -379,8 +379,5 @@ export function canPressFinish(
   tool: AnnotateTool | undefined,
   draft: DraftAnnotation | null,
 ): boolean {
-  return (
-    canFinishDraft(draft) ||
-    (tool != null && tool !== "pan")
-  );
+  return canFinishDraft(draft) || (tool != null && tool !== "pan");
 }

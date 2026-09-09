@@ -4,7 +4,6 @@ import {
   isMapChromeTarget,
   isMapOverlayTarget,
   offsetAnnotationsByPixels,
-  placeAnnotationAt,
   placeAnnotationsAt,
   readAnnotationClipboardItems,
   writeAnnotationClipboard,
@@ -91,10 +90,7 @@ export function duplicateSelectedAnnotation(
 }
 
 function cloneFallbacks(annotations: Annotation[]): Annotation[] {
-  return placeAnnotationsAt(
-    annotations,
-    shiftEast(annotations[0]),
-  );
+  return placeAnnotationsAt(annotations, shiftEast(annotations[0]));
 }
 
 function shiftEast(annotation: Annotation | undefined): LngLat {

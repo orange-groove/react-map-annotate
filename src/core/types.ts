@@ -86,7 +86,12 @@ export type AnnotationKind = Exclude<AnnotateTool, "pan" | "select">;
 export interface AnnotationStyle {
   color?: string;
   strokeWidth?: number;
+  /** Stroke alpha for lines, arrows, paths, and area outlines. Defaults to 0.95. */
+  strokeOpacity?: number;
+  /** Resting fill alpha for areas. Defaults to 0 (outline only). */
   fillOpacity?: number;
+  /** Fill alpha while hovered. Defaults to the greater of fillOpacity and 0.18. */
+  hoverFillOpacity?: number;
   fontSize?: number;
   fontFamily?: string;
 }
@@ -115,9 +120,16 @@ export interface Measurement {
 
 interface AnnotationBase {
   id: string;
+  /** Host-owned name. The library never overwrites this after creation. */
   label: string;
+  /** Library-derived text, such as a measure distance. Painted when present. */
+  caption?: string;
   style?: AnnotationStyle;
   groupId?: string;
+  /** Paint and hit-testing skip the annotation when false. Defaults to true. */
+  visible?: boolean;
+  /** Passthrough bag for host fields. Must be structured-cloneable. */
+  data?: Record<string, unknown>;
 }
 
 export interface PathAnnotation extends AnnotationBase {
@@ -175,10 +187,38 @@ export interface LabelRenderProps {
   latitude: number;
   offset?: [number, number];
   areaLabel?: string | null;
+  /** Library-derived text such as a measure distance. */
+  caption?: string | null;
   showLabel?: boolean;
   showArea?: boolean;
   onSelect?: (id: string, options?: SelectOptions) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
+}
+
+/**
+ * `live` fires continuously during a gesture (pointermove). `commit` fires once
+ * when the gesture ends, and for every discrete change (add, delete, style,
+ * label, group, undo, redo, paste).
+ */
+export type ChangeReason = "live" | "commit";
+
+export type ChangeCause =
+  | "add"
+  | "edit"
+  | "style"
+  | "label"
+  | "delete"
+  | "group"
+  | "ungroup"
+  | "undo"
+  | "redo"
+  | "set";
+
+export interface ChangeMeta {
+  reason: ChangeReason;
+  cause: ChangeCause;
+  /** Annotations touched by this change. Empty when it cannot be attributed. */
+  ids: string[];
 }
 
 export interface AnnotateCallbacks {
@@ -213,6 +253,8 @@ export interface AnnotateProps extends AnnotateCallbacks {
   enableTerrain?: boolean;
   terrainSource?: TerrainSourceOptions;
   interactive?: boolean;
+  /** Fires once the map style is loaded and annotate sources are mounted. */
+  onStyleReady?: () => void;
   labelsEditable?: boolean;
   showLabels?: boolean;
   showArea?: boolean;

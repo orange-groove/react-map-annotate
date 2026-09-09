@@ -239,8 +239,9 @@ describe("useAnnotate", () => {
     act(() => {
       result.current.groupSelected();
     });
-    const groupId = result.current.annotations.find((item) => item.id === "m1")
-      ?.groupId;
+    const groupId = result.current.annotations.find(
+      (item) => item.id === "m1",
+    )?.groupId;
     expect(groupId).toBeTruthy();
     expect(
       result.current.annotations.find((item) => item.id === "l1")?.groupId,

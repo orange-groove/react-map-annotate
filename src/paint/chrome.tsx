@@ -12,7 +12,7 @@ import {
   labelAnchor,
 } from "../core/utils/annotations";
 import { idIsSelected, editHandleAnnotationId } from "../core/utils/selection";
-import type { ArrowMarker } from "../core/utils/features";
+import { visibleAnnotations, type ArrowMarker } from "../core/utils/features";
 import { useMapGl } from "../engines/kit/context";
 import { useOptionalAnnotate } from "../session/annotate-context";
 import { AnnotationLabel } from "./annotation-label";
@@ -22,7 +22,7 @@ import { DefaultArrowHead } from "./arrow-head";
 import { DraftVertices, EditHandles } from "./edit-handles";
 
 export function AnnotateChrome({
-  annotations,
+  annotations: annotationsProp,
   draft,
   selectedId,
   selectedIds: selectedIdsProp,
@@ -62,8 +62,9 @@ export function AnnotateChrome({
 }) {
   const { Marker } = useMapGl();
   const session = useOptionalAnnotate();
+  const annotations = visibleAnnotations(annotationsProp ?? []);
   const selectedIds = selectedIdsProp ?? session?.selectedIds;
-  const handleId = editHandleAnnotationId(annotations ?? [], {
+  const handleId = editHandleAnnotationId(annotations, {
     draft,
     selectedIds,
     hoveredId,
@@ -129,13 +130,12 @@ export function AnnotateChrome({
         ))}
 
       {draft?.kind === "polygon" ? (
-        <DraftVertices coordinates={draft.coordinates} color={color} />
+        <DraftVertices coordinates={draft.coordinates} />
       ) : null}
 
       <EditHandles
-        annotations={annotations ?? []}
+        annotations={annotations}
         activeId={handleId}
-        defaultColor={color}
         onUpdate={onUpdate}
         onDragEnd={onHandleDragEnd}
       />

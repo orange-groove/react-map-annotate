@@ -1,5 +1,6 @@
 import type { MapPoint } from "../types";
 import type { Annotation, LngLat, TextAnnotation } from "../types";
+import { isAnnotateLayerId } from "../constants";
 import {
   isAreaAnnotation,
   isMarkerAnnotation,
@@ -13,6 +14,7 @@ import {
   textHitSize,
   textRotation,
 } from "./edit";
+import { isAnnotationVisible } from "./features";
 
 const LINE_HIT_PX = 9;
 const MARKER_HIT_HALF_W = 16;
@@ -131,8 +133,9 @@ function hitText(
 export function hitTestAnnotations(
   project: (lngLat: { lng: number; lat: number }) => MapPoint,
   point: MapPoint,
-  annotations: Annotation[],
+  items: Annotation[],
 ): string | null {
+  const annotations = items.filter(isAnnotationVisible);
   for (let index = annotations.length - 1; index >= 0; index -= 1) {
     const annotation = annotations[index];
     if (isTextAnnotation(annotation) && hitText(project, point, annotation)) {
@@ -180,6 +183,30 @@ export function hitTestAnnotations(
   }
 
   return null;
+}
+
+/**
+ * Reports whether a map click landed on an annotate layer, so a host that also
+ * selects its own layers on the same map can skip its handler. Pass the array
+ * from `map.queryRenderedFeatures(point)`.
+ */
+export function annotateClickTarget(
+  features: Array<{
+    layer?: { id?: string };
+    properties?: { id?: unknown } | null;
+  }>,
+): { consumed: boolean; id: string | null } {
+  for (const feature of features) {
+    if (!isAnnotateLayerId(feature.layer?.id)) continue;
+    const id = feature.properties?.id;
+    const isAnnotation =
+      typeof id === "string" &&
+      id !== "draft" &&
+      !id.startsWith("draft-") &&
+      !id.startsWith("group-");
+    return { consumed: true, id: isAnnotation ? id : null };
+  }
+  return { consumed: false, id: null };
 }
 
 export interface ScreenRect {
@@ -288,6 +315,7 @@ export function idsInScreenRect(
   if (rect.width < MARQUEE_MIN_PX && rect.height < MARQUEE_MIN_PX) return [];
   return annotations
     .filter((annotation) => {
+      if (!isAnnotationVisible(annotation)) return false;
       const bounds = annotationScreenBounds(project, annotation);
       return bounds != null && screenRectsOverlap(rect, bounds);
     })

@@ -3,7 +3,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useRef, useState } from "react";
 import { RotateCw } from "lucide-react";
-import { DEFAULT_COLOR, HANDLE_HIT_PX } from "../core/constants";
+import { HANDLE_HIT_PX } from "../core/constants";
 import { useMapGl } from "../engines/kit/context";
 import type { Annotation, LngLat, SelectOptions } from "../core/types";
 import {
@@ -91,7 +91,6 @@ function handleVisualStyle(
 function HandleMarker({
   annotation,
   handle,
-  color,
   label,
   selected,
   onUpdate,
@@ -102,7 +101,6 @@ function HandleMarker({
 }: {
   annotation: Annotation;
   handle: EditHandleHit & { coordinate: LngLat };
-  color: string;
   label: string;
   selected: boolean;
   onUpdate?: (annotation: Annotation) => void;
@@ -193,13 +191,11 @@ function HandleMarker({
 export function EditHandles({
   annotations,
   activeId,
-  defaultColor = DEFAULT_COLOR,
   onUpdate,
   onDragEnd,
 }: {
   annotations: Annotation[];
   activeId: string | null;
-  defaultColor?: string;
   onUpdate?: (annotation: Annotation) => void;
   onDragEnd?: (id: string) => void;
 }) {
@@ -213,7 +209,6 @@ export function EditHandles({
   if (!visibleId) return null;
   const annotation = annotations.find((item) => item.id === visibleId);
   if (!annotation) return null;
-  const color = annotation.style?.color ?? defaultColor;
 
   const handles = editHandlesFor(
     annotation,
@@ -228,7 +223,6 @@ export function EditHandles({
           key={`${annotation.id}-${handle.kind}-${handle.index}`}
           annotation={annotation}
           handle={handle}
-          color={color}
           selected={
             !dragId &&
             handle.kind === "vertex" &&
@@ -281,13 +275,7 @@ export function EditHandles({
   );
 }
 
-export function DraftVertices({
-  coordinates,
-  color = DEFAULT_COLOR,
-}: {
-  coordinates: LngLat[];
-  color?: string;
-}) {
+export function DraftVertices({ coordinates }: { coordinates: LngLat[] }) {
   const { Marker } = useMapGl();
   return (
     <>

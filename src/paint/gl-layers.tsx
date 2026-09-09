@@ -85,7 +85,8 @@ export function AnnotateLayers({
           ]}
           paint={{
             "line-color": ["get", "color"],
-            "line-width": strokeWidth,
+            "line-width": ["get", "strokeWidth"],
+            "line-opacity": ["get", "strokeOpacity"],
           }}
         />
       </Source>
@@ -107,7 +108,7 @@ export function AnnotateLayers({
           paint={{
             "line-color": ["get", "color"],
             "line-width": ["get", "strokeWidth"],
-            "line-opacity": 0.95,
+            "line-opacity": ["get", "strokeOpacity"],
           }}
         />
       </Source>

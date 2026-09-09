@@ -115,11 +115,15 @@ export {
   buildAnnotationFeatures,
   draftAreaCoordinates,
   draftPolygonPreview,
+  isAnnotationVisible,
+  visibleAnnotations,
+  areaRing,
 } from "./features";
 export type { ArrowMarker, AnnotationFeatures } from "./features";
 
 export {
   hitTestAnnotations,
+  annotateClickTarget,
   distanceToSegment,
   pointInRing,
   idsInScreenRect,

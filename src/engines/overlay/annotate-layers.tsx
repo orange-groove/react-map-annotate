@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { DEFAULT_COLOR, DEFAULT_STROKE_WIDTH } from "../../core/constants";
+import {
+  DEFAULT_COLOR,
+  DEFAULT_STROKE_OPACITY,
+  DEFAULT_STROKE_WIDTH,
+} from "../../core/constants";
 import { useMapGl } from "../kit/context";
 import type { MapLike, MapPoint } from "../kit/types";
 import type { AnnotateProps, LngLat } from "../../core/types";
@@ -169,7 +173,14 @@ function OverlayPaint({
                   ? "none"
                   : String(feature.properties?.color ?? color)
               }
-              strokeWidth={skipOutline ? 0 : strokeWidth}
+              strokeWidth={
+                skipOutline
+                  ? 0
+                  : Number(feature.properties?.strokeWidth ?? strokeWidth)
+              }
+              strokeOpacity={Number(
+                feature.properties?.strokeOpacity ?? DEFAULT_STROKE_OPACITY,
+              )}
             />
           );
         })}
@@ -204,7 +215,9 @@ function OverlayPaint({
             strokeWidth={Number(feature.properties?.strokeWidth ?? strokeWidth)}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeOpacity={0.95}
+            strokeOpacity={Number(
+              feature.properties?.strokeOpacity ?? DEFAULT_STROKE_OPACITY,
+            )}
           />
         ))}
         {dashed.features.map((feature, index) => (

@@ -3,7 +3,11 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { Polygon, Polyline } from "@vis.gl/react-google-maps";
-import { DEFAULT_COLOR, DEFAULT_STROKE_WIDTH } from "../../core/constants";
+import {
+  DEFAULT_COLOR,
+  DEFAULT_STROKE_OPACITY,
+  DEFAULT_STROKE_WIDTH,
+} from "../../core/constants";
 import type { AnnotateProps, LngLat } from "../../core/types";
 import { buildAnnotationFeatures } from "../../core/utils/features";
 import { AnnotateChrome } from "../../paint/chrome";
@@ -199,8 +203,18 @@ export function GoogleAnnotateLayers({
             fillColor={featureColor}
             fillOpacity={Number(feature.properties?.fillOpacity ?? 0)}
             strokeColor={featureColor}
-            strokeOpacity={skipOutline ? 0 : 1}
-            strokeWeight={skipOutline ? 0 : strokeWidth}
+            strokeOpacity={
+              skipOutline
+                ? 0
+                : Number(
+                    feature.properties?.strokeOpacity ?? DEFAULT_STROKE_OPACITY,
+                  )
+            }
+            strokeWeight={
+              skipOutline
+                ? 0
+                : Number(feature.properties?.strokeWidth ?? strokeWidth)
+            }
           />
         );
       })}
@@ -217,7 +231,9 @@ export function GoogleAnnotateLayers({
           clickable={false}
           geodesic={false}
           strokeColor={String(feature.properties?.color ?? color)}
-          strokeOpacity={0.95}
+          strokeOpacity={Number(
+            feature.properties?.strokeOpacity ?? DEFAULT_STROKE_OPACITY,
+          )}
           strokeWeight={Number(feature.properties?.strokeWidth ?? strokeWidth)}
         />
       ))}

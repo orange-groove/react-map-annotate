@@ -3,6 +3,7 @@ import type { Annotation, AnnotationKind, DraftAnnotation } from "../types";
 import { annotationFromDraft } from "./annotations";
 import { destination } from "./geo";
 import {
+  areaRing,
   buildAnnotationFeatures,
   draftAreaCoordinates,
   draftPolygonPreview,
@@ -74,6 +75,72 @@ describe("buildAnnotationFeatures", () => {
     );
     expect(polygon?.properties?.fillOpacity).toBe(0.18);
     expect(circle?.properties?.fillOpacity).toBe(0);
+  });
+
+  it("paints a resting fill when the host asks for one", () => {
+    const filled = buildAnnotationFeatures({
+      annotations: [
+        {
+          ...make("polygon", [origin, edge, third]),
+          style: { fillOpacity: 0.4 },
+        },
+      ],
+    });
+    expect(filled.fills.features[0]?.properties?.fillOpacity).toBe(0.4);
+  });
+
+  it("takes the hover fill from hoverFillOpacity", () => {
+    const hovered = buildAnnotationFeatures({
+      annotations: [
+        {
+          ...make("polygon", [origin, edge, third]),
+          style: { fillOpacity: 0.1, hoverFillOpacity: 0.6 },
+        },
+      ],
+      hoveredId: "polygon",
+    });
+    expect(hovered.fills.features[0]?.properties?.fillOpacity).toBe(0.6);
+  });
+
+  it("carries strokeOpacity onto lines and area outlines", () => {
+    const styled = buildAnnotationFeatures({
+      annotations: [
+        { ...make("line", [origin, edge]), style: { strokeOpacity: 0.4 } },
+        {
+          ...make("polygon", [origin, edge, third]),
+          style: { strokeOpacity: 0.2 },
+        },
+      ],
+    });
+    expect(styled.lines.features[0]?.properties?.strokeOpacity).toBe(0.4);
+    expect(styled.fills.features[0]?.properties?.strokeOpacity).toBe(0.2);
+    expect(features.lines.features[0]?.properties?.strokeOpacity).toBe(0.95);
+  });
+
+  it("skips annotations the host has hidden", () => {
+    const hidden = buildAnnotationFeatures({
+      annotations: annotations.map((annotation) => ({
+        ...annotation,
+        visible: false,
+      })),
+    });
+    expect(hidden.lines.features).toHaveLength(0);
+    expect(hidden.fills.features).toHaveLength(0);
+    expect(hidden.markers).toHaveLength(0);
+    expect(hidden.arrows).toHaveLength(0);
+  });
+
+  it("regenerates the circle ring from center and radius, not stored coordinates", () => {
+    const circle = make("circle", [origin, edge]);
+    if (circle.kind !== "circle") throw new Error("expected a circle");
+    const corrupted = {
+      ...circle,
+      coordinates: [origin, origin, origin, origin] as Array<[number, number]>,
+    };
+    const painted = buildAnnotationFeatures({ annotations: [corrupted] });
+    const ring = painted.fills.features[0]?.geometry.coordinates[0];
+    expect(ring?.length).toBeGreaterThan(4);
+    expect(ring).toEqual(areaRing(circle));
   });
 
   it("keeps markers and text out of line and fill sources", () => {
