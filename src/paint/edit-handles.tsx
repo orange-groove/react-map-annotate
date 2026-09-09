@@ -24,7 +24,7 @@ function CircleResizeIcon() {
       height="16"
       viewBox="0 0 16 16"
       fill="none"
-      stroke="currentColor"
+      stroke="#000000"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -60,7 +60,6 @@ function handleHitStyle(kind: EditHandleHit["kind"]): CSSProperties {
 }
 
 function handleVisualStyle(
-  color: string,
   kind: EditHandleHit["kind"] = "vertex",
   selected = false,
 ): CSSProperties {
@@ -68,13 +67,11 @@ function handleVisualStyle(
     background: kind === "insert" ? "transparent" : "#ffffff",
     borderStyle: "solid",
     borderWidth: kind === "insert" ? 1.5 : 2,
-    borderColor: color,
+    borderColor: "#000000",
     borderRadius: "50%",
     boxSizing: "border-box",
-    boxShadow: selected
-      ? `0 0 0 3px ${color}`
-      : "0 0 0 1px rgba(255, 255, 255, 0.9)",
-    color,
+    boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.9)",
+    color: "#000000",
     pointerEvents: "none",
     opacity: kind === "insert" ? 0.85 : 1,
     ...(isIconHandle(kind)
@@ -183,7 +180,7 @@ function HandleMarker({
                   ? "rma-vertex rma-vertex--insert"
                   : `rma-vertex${selected ? " rma-vertex--selected" : ""}`
           }
-          style={handleVisualStyle(color, kind, selected)}
+          style={handleVisualStyle(kind, selected)}
         >
           {kind === "resize" ? <CircleResizeIcon /> : null}
           {kind === "rotate" ? <RotateIcon /> : null}
@@ -309,7 +306,7 @@ export function DraftVertices({
           >
             <div
               className={`rma-vertex${index === 0 ? " rma-vertex--first" : ""}`}
-              style={handleVisualStyle(color)}
+              style={handleVisualStyle()}
             />
           </div>
         </Marker>

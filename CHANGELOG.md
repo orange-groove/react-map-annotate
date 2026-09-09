@@ -3,6 +3,10 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.12
+
+- Keep handles black instead of color of annotation.
+
 ## 0.3.11
 
 - Rotate handle on drawings, rectangles, polygons, and text. Drawings also
