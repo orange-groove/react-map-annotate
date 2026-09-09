@@ -86,6 +86,7 @@ export interface MapDrawingLatest {
   setSelectedVertexIndex?: (index: number | null) => void;
   undo?: () => void;
   redo?: () => void;
+  beginEdit?: () => void;
   endEdit?: () => void;
   removeSelected?: () => void;
   groupSelected?: () => void;
@@ -255,6 +256,9 @@ export function useMapDrawing({
 
   const cancelDrawing = React.useCallback(() => {
     dragRef.current = false;
+    // Close any gesture that was cut short, so its geometry is not left
+    // painted from the live store with nothing to commit it.
+    if (editRef.current) latestRef.current.endEdit?.();
     editRef.current = null;
     marqueeRef.current = null;
     setMarquee(null);
@@ -393,6 +397,7 @@ export function useMapDrawing({
                 : null,
           );
           setHoverId(handleTarget.annotation.id);
+          latestRef.current.beginEdit?.();
           map.dragPan.disable();
           setMapCursor(map, editHandleCursor(handleTarget.handle, true));
           setPointerCursor(editHandleCursor(handleTarget.handle, true));
@@ -422,6 +427,7 @@ export function useMapDrawing({
               original,
               originals: items.filter((item) => nextIds.includes(item.id)),
             };
+            latestRef.current.beginEdit?.();
             map.dragPan.disable();
             setMapCursor(map, "grabbing");
             setPointerCursor("grabbing");
@@ -473,27 +479,24 @@ export function useMapDrawing({
                 map,
                 from: edit.start,
                 handleAt: edit.handleAt,
+                preview: true,
               }),
             );
-            setMapCursor(map, editHandleCursor(edit.handle, true));
-            setPointerCursor(editHandleCursor(edit.handle, true));
           } else if (edit.originals.length > 1) {
             const moved = edit.originals.map((item) =>
-              moveAnnotation(item, edit.start, point),
+              moveAnnotation(item, edit.start, point, { preview: true }),
             );
             if (latestRef.current.onUpdateMany) {
               latestRef.current.onUpdateMany(moved);
             } else {
               for (const item of moved) latestRef.current.onUpdate?.(item);
             }
-            setMapCursor(map, "grabbing");
-            setPointerCursor("grabbing");
           } else {
             latestRef.current.onUpdate?.(
-              moveAnnotation(edit.original, edit.start, point),
+              moveAnnotation(edit.original, edit.start, point, {
+                preview: true,
+              }),
             );
-            setMapCursor(map, "grabbing");
-            setPointerCursor("grabbing");
           }
           return;
         }

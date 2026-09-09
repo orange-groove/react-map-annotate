@@ -7,7 +7,7 @@ import {
   DEFAULT_STROKE_WIDTH,
 } from "../../core/constants";
 import type { AnnotateProps, LngLat } from "../../core/types";
-import { buildAnnotationFeatures } from "../../core/utils/features";
+import { useAnnotationFeatures } from "../../paint/use-annotation-features";
 import { AnnotateChrome } from "../../paint/chrome";
 import { toLatLngs } from "./path";
 
@@ -53,7 +53,7 @@ export function LeafletAnnotateLayers({
   const color = defaultColor ?? DEFAULT_COLOR;
   const strokeWidth = defaultStrokeWidth ?? DEFAULT_STROKE_WIDTH;
   const { lines, fills, dashed, bounds, arrows, markers } =
-    buildAnnotationFeatures({
+    useAnnotationFeatures({
       annotations,
       draft,
       selectedId,

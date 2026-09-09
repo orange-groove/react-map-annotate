@@ -220,6 +220,27 @@ export function removeAnnotations(
   return annotations.filter((annotation) => !drop.has(annotation.id));
 }
 
+/**
+ * Re-samples a measure path against terrain. Runs once when a gesture commits,
+ * never per frame. Anything else is returned untouched.
+ */
+export function settleMeasurement(
+  annotation: Annotation,
+  options: { map?: TerrainMap | null; sampleIntervalMeters?: number } = {},
+): Annotation {
+  if (annotation.kind !== "measure") return annotation;
+  const measurement = measurePath(
+    annotation.coordinates,
+    (coordinate) => queryGroundElevation(options.map, coordinate),
+    options.sampleIntervalMeters,
+  );
+  return {
+    ...annotation,
+    measurement,
+    caption: formatMeasurement(measurement),
+  };
+}
+
 function pathKind(kind: AnnotationKind): kind is PathAnnotation["kind"] {
   return (
     kind === "draw" ||

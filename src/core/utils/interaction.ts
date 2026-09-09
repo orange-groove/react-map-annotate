@@ -11,6 +11,8 @@ export function setMapCursor(
 ) {
   const canvas = map.getCanvas();
   if (!canvas?.style) return;
+  // Hover fires this on every pointer event; only touch the DOM on a change.
+  if (canvas.style.cursor === cursor) return;
   canvas.style.cursor = cursor;
   const host = canvas.parentElement;
   if (host?.style) host.style.cursor = cursor;

@@ -34,6 +34,7 @@ import {
   textFontSize,
 } from "./edit";
 import { formatMeasurement, measurePath } from "./measure";
+import { settleMeasurement } from "./annotations";
 import {
   bearingDelta,
   destination,
@@ -255,6 +256,66 @@ describe("path endpoints", () => {
     );
     expect(next.caption).toBe(formatMeasurement(next.measurement!));
     expect(next.label).toBe("Measurement 3");
+  });
+
+  it("keeps a live drag cheap by skipping terrain sampling", () => {
+    const measurement = measurePath([origin, east]);
+    const measure: PathAnnotation = {
+      id: "measure",
+      kind: "measure",
+      label: "Measurement 3",
+      caption: formatMeasurement(measurement),
+      coordinates: [origin, east],
+      measurement,
+    };
+    let elevationCalls = 0;
+    const map = {
+      queryTerrainElevation: () => {
+        elevationCalls += 1;
+        return 10;
+      },
+    };
+
+    const preview = movePathEndpoint(measure, "end", west, {
+      map,
+      preview: true,
+    });
+    expect(elevationCalls).toBe(0);
+    expect(preview.measurement?.samples).toEqual([]);
+    // The readout still tracks the pointer.
+    expect(preview.measurement?.distanceMeters).toBeCloseTo(
+      haversineDistance(origin, west),
+      1,
+    );
+    expect(preview.caption).not.toBe(measure.caption);
+
+    const settled = settleMeasurement(preview, { map });
+    expect(elevationCalls).toBeGreaterThan(0);
+    expect(
+      settled.kind === "measure" && settled.measurement?.samples.length,
+    ).toBeGreaterThan(1);
+  });
+
+  it("moves a measure without walking its samples during a drag", () => {
+    const measurement = measurePath([origin, east]);
+    const measure: PathAnnotation = {
+      id: "measure",
+      kind: "measure",
+      label: "Measurement 3",
+      coordinates: [origin, east],
+      measurement,
+    };
+    expect(measure.measurement?.samples.length).toBeGreaterThan(5);
+
+    const preview = moveAnnotation(measure, origin, west, { preview: true });
+    expect(preview.kind === "measure" && preview.measurement?.samples).toEqual(
+      [],
+    );
+
+    const settled = moveAnnotation(measure, origin, west);
+    expect(
+      settled.kind === "measure" && settled.measurement?.samples.length,
+    ).toBe(measurement.samples.length);
   });
 
   it("keeps a custom measure label", () => {

@@ -10,7 +10,7 @@ import {
 import { useMapGl } from "../kit/context";
 import type { MapLike, MapPoint } from "../kit/types";
 import type { AnnotateProps, LngLat } from "../../core/types";
-import { buildAnnotationFeatures } from "../../core/utils/features";
+import { useAnnotationFeatures } from "../../paint/use-annotation-features";
 import { AnnotateChrome } from "../../paint/chrome";
 
 function pathFrom(
@@ -133,7 +133,7 @@ function OverlayPaint({
   const color = defaultColor ?? DEFAULT_COLOR;
   const strokeWidth = defaultStrokeWidth ?? DEFAULT_STROKE_WIDTH;
   const { lines, fills, dashed, bounds, samples, arrows, markers } =
-    buildAnnotationFeatures({
+    useAnnotationFeatures({
       annotations,
       draft,
       selectedId,

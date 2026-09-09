@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AnnotateProvider } from "./annotate-context";
 import type { Annotation, ChangeMeta, PathAnnotation } from "../core/types";
 import { useAnnotate } from "./use-annotate";
+import { useLiveAnnotations } from "./live-edits";
 
 type CommitCall = [Annotation[], ChangeMeta];
 
@@ -27,8 +28,91 @@ function moved(offset: number): PathAnnotation {
   };
 }
 
+function endOf(annotation: Annotation | undefined) {
+  return (annotation as PathAnnotation | undefined)?.coordinates[1];
+}
+
+/** Lets the live store's rAF coalescing land. */
+async function nextFrame() {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 describe("live edits versus commits", () => {
-  it("reports every pointermove as live and the gesture end as one commit", () => {
+  it("keeps a drag out of React state, out of onChange, and out of onCommit", async () => {
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    let renders = 0;
+    const { result } = renderHook(
+      () => {
+        renders += 1;
+        return useAnnotate();
+      },
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <AnnotateProvider
+            initialAnnotations={[line]}
+            onChange={onChange}
+            onCommit={onCommit}
+          >
+            {children}
+          </AnnotateProvider>
+        ),
+      },
+    );
+
+    const before = result.current.annotations;
+    const rendersBeforeDrag = renders;
+
+    act(() => {
+      result.current.beginEdit();
+      result.current.onUpdate(moved(0.01));
+      result.current.onUpdate(moved(0.02));
+      result.current.onUpdate(moved(0.03));
+    });
+    await nextFrame();
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
+    // The session array is untouched, by reference, for the whole gesture.
+    expect(result.current.annotations).toBe(before);
+    // Only the one render that flipped isEditing.
+    expect(renders - rendersBeforeDrag).toBeLessThanOrEqual(1);
+  });
+
+  it("paints live geometry before anything is committed", async () => {
+    const { result } = renderHook(
+      () => {
+        const session = useAnnotate();
+        return { session, painted: useLiveAnnotations(session.annotations) };
+      },
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <AnnotateProvider initialAnnotations={[line]}>
+            {children}
+          </AnnotateProvider>
+        ),
+      },
+    );
+
+    act(() => {
+      result.current.session.beginEdit();
+      result.current.session.onUpdate(moved(0.04));
+    });
+    await nextFrame();
+
+    expect(endOf(result.current.painted[0])).toEqual(
+      moved(0.04).coordinates[1],
+    );
+    expect(endOf(result.current.session.annotations[0])).toEqual(
+      line.coordinates[1],
+    );
+  });
+
+  it("lands the whole gesture in one commit", async () => {
     const onChange = vi.fn();
     const onCommit = vi.fn();
     const { result } = renderHook(() => useAnnotate(), {
@@ -44,27 +128,100 @@ describe("live edits versus commits", () => {
     });
 
     act(() => {
+      result.current.beginEdit();
       result.current.onUpdate(moved(0.01));
       result.current.onUpdate(moved(0.02));
       result.current.onUpdate(moved(0.03));
     });
-
-    expect(onChange).toHaveBeenCalledTimes(3);
-    expect(
-      (onChange.mock.calls as CommitCall[]).every(
-        ([, meta]) => meta.reason === "live",
-      ),
-    ).toBe(true);
-    expect(onCommit).not.toHaveBeenCalled();
-
+    await nextFrame();
     act(() => {
       result.current.endEdit();
     });
 
     expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledTimes(1);
     const [annotations, meta] = onCommit.mock.calls[0] as CommitCall;
     expect(meta).toEqual({ reason: "commit", cause: "edit", ids: ["l1"] });
-    expect(annotations[0]).toEqual(moved(0.03));
+    expect(endOf(annotations[0])).toEqual(moved(0.03).coordinates[1]);
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.03).coordinates[1],
+    );
+  });
+
+  it("undoes a whole gesture as one step", async () => {
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AnnotateProvider initialAnnotations={[line]}>
+          {children}
+        </AnnotateProvider>
+      ),
+    });
+
+    act(() => {
+      result.current.beginEdit();
+      result.current.onUpdate(moved(0.01));
+      result.current.onUpdate(moved(0.02));
+    });
+    await nextFrame();
+    act(() => {
+      result.current.endEdit();
+    });
+    act(() => {
+      result.current.undo();
+    });
+
+    expect(endOf(result.current.annotations[0])).toEqual(line.coordinates[1]);
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("emits coalesced live changes only when asked", async () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AnnotateProvider
+          initialAnnotations={[line]}
+          onChange={onChange}
+          emitLiveChanges
+        >
+          {children}
+        </AnnotateProvider>
+      ),
+    });
+
+    act(() => {
+      result.current.beginEdit();
+      result.current.onUpdate(moved(0.01));
+      result.current.onUpdate(moved(0.02));
+      result.current.onUpdate(moved(0.03));
+    });
+    await nextFrame();
+
+    // Three moves in one frame, one notification.
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const [annotations, meta] = onChange.mock.calls[0] as CommitCall;
+    expect(meta.reason).toBe("live");
+    expect(endOf(annotations[0])).toEqual(moved(0.03).coordinates[1]);
+  });
+
+  it("commits a programmatic update straight away", () => {
+    const onCommit = vi.fn();
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AnnotateProvider initialAnnotations={[line]} onCommit={onCommit}>
+          {children}
+        </AnnotateProvider>
+      ),
+    });
+
+    // No beginEdit, so this is not a gesture: it lands in state now.
+    act(() => {
+      result.current.onUpdate(moved(0.09));
+    });
+
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.09).coordinates[1],
+    );
+    expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
   it("exposes isEditing for the span of a gesture", () => {
@@ -78,6 +235,7 @@ describe("live edits versus commits", () => {
 
     expect(result.current.isEditing).toBe(false);
     act(() => {
+      result.current.beginEdit();
       result.current.onUpdate(moved(0.01));
     });
     expect(result.current.isEditing).toBe(true);
@@ -115,6 +273,30 @@ describe("live edits versus commits", () => {
       { reason: "commit", cause: "delete", ids: ["l1"] },
     ]);
   });
+
+  it("applies a style change on top of an unfinished gesture", async () => {
+    const { result } = renderHook(() => useAnnotate(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AnnotateProvider initialAnnotations={[line]}>
+          {children}
+        </AnnotateProvider>
+      ),
+    });
+
+    act(() => {
+      result.current.beginEdit();
+      result.current.onUpdate(moved(0.02));
+    });
+    await nextFrame();
+    act(() => {
+      result.current.setColor("l1", "#ff0000");
+    });
+
+    expect(result.current.annotations[0]?.style?.color).toBe("#ff0000");
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.02).coordinates[1],
+    );
+  });
 });
 
 describe("controlled mode", () => {
@@ -136,14 +318,16 @@ describe("controlled mode", () => {
     };
   }
 
-  it("keeps undo history when the host echoes our own array back", () => {
+  it("keeps undo history when the host echoes our own array back", async () => {
     const { result } = renderHook(() => useAnnotate(), {
       wrapper: ControlledHarness({}),
     });
 
     act(() => {
+      result.current.beginEdit();
       result.current.onUpdate(moved(0.01));
     });
+    await nextFrame();
     act(() => {
       result.current.endEdit();
     });
@@ -152,10 +336,10 @@ describe("controlled mode", () => {
     act(() => {
       result.current.undo();
     });
-    expect(result.current.annotations[0]).toEqual(line);
+    expect(endOf(result.current.annotations[0])).toEqual(line.coordinates[1]);
   });
 
-  it("survives a host that remaps colour on the way back", () => {
+  it("survives a host that remaps colour on the way back", async () => {
     const { result } = renderHook(() => useAnnotate(), {
       wrapper: ControlledHarness({
         remap: (annotations) =>
@@ -167,8 +351,10 @@ describe("controlled mode", () => {
     });
 
     act(() => {
+      result.current.beginEdit();
       result.current.onUpdate(moved(0.02));
     });
+    await nextFrame();
     act(() => {
       result.current.endEdit();
     });
@@ -178,17 +364,18 @@ describe("controlled mode", () => {
     expect(result.current.annotations[0]?.style?.color).toBe(
       "rgba(255,0,0,0.8)",
     );
-    expect(
-      (result.current.annotations[0] as typeof line).coordinates[1],
-    ).toEqual(moved(0.02).coordinates[1]);
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.02).coordinates[1],
+    );
     expect(result.current.canUndo).toBe(true);
   });
 
-  it("ignores an external array that lands mid-gesture", () => {
+  it("ignores an external array that lands mid-gesture", async () => {
     const { result, rerender } = renderHook(
       ({ annotations }: { annotations: Annotation[] }) => {
         void annotations;
-        return useAnnotate();
+        const session = useAnnotate();
+        return { session, painted: useLiveAnnotations(session.annotations) };
       },
       {
         initialProps: { annotations: [line] },
@@ -207,12 +394,22 @@ describe("controlled mode", () => {
     );
 
     act(() => {
-      result.current.onUpdate(moved(0.05));
+      result.current.session.beginEdit();
+      result.current.session.onUpdate(moved(0.05));
     });
+    await nextFrame();
     rerender({ annotations: [{ ...line, label: "From the server" }] });
 
-    expect(
-      (result.current.annotations[0] as typeof line).coordinates[1],
-    ).toEqual(moved(0.05).coordinates[1]);
+    // The drag owns the map until it ends.
+    expect(endOf(result.current.painted[0])).toEqual(
+      moved(0.05).coordinates[1],
+    );
+
+    act(() => {
+      result.current.session.endEdit();
+    });
+    expect(endOf(result.current.session.annotations[0])).toEqual(
+      moved(0.05).coordinates[1],
+    );
   });
 });

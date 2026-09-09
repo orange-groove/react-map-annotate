@@ -154,11 +154,18 @@ see [`examples/custom-toolbar.tsx`](./examples/custom-toolbar.tsx). For a
 sidebar that names, recolors, and deletes rows, see
 [`examples/custom-list.tsx`](./examples/custom-list.tsx).
 
-### Persist on commit, not on every pointermove
+### A drag does not go through your state
 
-`onChange` fires continuously while a shape is being dragged. `onCommit` fires
-once when the gesture ends, and for every discrete change (add, delete, style,
-label, group, undo, redo). Paint from `onChange`, persist from `onCommit`.
+Dragging a shape does not call `onChange`, and does not update
+`useAnnotate().annotations`. The library paints the in-flight geometry itself,
+at most once per frame, and hands you the result once the gesture ends. A
+toolbar or a layers list reading `annotations` is a frame or two stale mid-drag
+and correct as soon as the pointer comes up. Nothing you write in `onChange`
+can make a drag stutter.
+
+`onChange` fires when a change lands: the end of a gesture, and every discrete
+change (add, delete, style, label, group, undo, redo). `onCommit` fires for the
+same set and is the one to persist from.
 
 ```tsx
 <AnnotateProvider
@@ -178,6 +185,19 @@ Both callbacks receive `(annotations, meta)`. `meta.reason` is `"live"` or
 `delete`, `group`, `ungroup`, `undo`, `redo`, `set`), and `meta.ids` lists the
 annotations it touched. `useAnnotate()` also exposes `isEditing` if your own UI
 needs to know a gesture is in flight.
+
+If you do want the in-flight geometry, ask for it explicitly rather than paying
+for it everywhere:
+
+```tsx
+// Re-renders once per frame during a drag, and only this component.
+const live = useLiveAnnotations(useAnnotate().annotations);
+```
+
+`emitLiveChanges` on `AnnotateProvider` brings back a live `onChange`, throttled
+to one call per frame with `meta.reason === "live"`. It costs you a render per
+frame for geometry you will be handed again on commit, so leave it off unless
+something outside the map has to follow the pointer.
 
 In controlled mode the provider ignores incoming `annotations` while a gesture
 is running, and treats an array you hand straight back as your echo rather than

@@ -217,6 +217,125 @@ function arrowsFor(
   return arrows;
 }
 
+interface AnnotationParts {
+  line: GeoJSON.Feature<GeoJSON.LineString> | null;
+  fill: GeoJSON.Feature<GeoJSON.Polygon> | null;
+  bounds: GeoJSON.Feature<GeoJSON.Polygon> | null;
+  samples: GeoJSON.Feature<GeoJSON.Point>[];
+  arrows: ArrowMarker[];
+  marker: MarkerAnnotation | null;
+}
+
+const EMPTY_PARTS: AnnotationParts = {
+  line: null,
+  fill: null,
+  bounds: null,
+  samples: [],
+  arrows: [],
+  marker: null,
+};
+
+interface PartsContext {
+  selected: boolean;
+  hovered: boolean;
+  defaultColor: string;
+  defaultStrokeWidth: number;
+}
+
+function sameContext(a: PartsContext, b: PartsContext): boolean {
+  return (
+    a.selected === b.selected &&
+    a.hovered === b.hovered &&
+    a.defaultColor === b.defaultColor &&
+    a.defaultStrokeWidth === b.defaultStrokeWidth
+  );
+}
+
+// Keyed on the annotation object, so a drag only rebuilds the annotation whose
+// geometry actually changed. Every sibling keeps the feature it already had,
+// which lets the paint layer hand the map the same collection it saw last
+// frame and skip the upload entirely.
+const partsCache = new WeakMap<
+  Annotation,
+  { context: PartsContext; parts: AnnotationParts }
+>();
+
+function buildParts(
+  annotation: Annotation,
+  context: PartsContext,
+): AnnotationParts {
+  const { selected, hovered, defaultColor, defaultStrokeWidth } = context;
+  const color = annotationColor(annotation, defaultColor);
+  if (isPathAnnotation(annotation)) {
+    const strokeWidth = annotation.style?.strokeWidth ?? defaultStrokeWidth;
+    const bounds =
+      (annotation.kind === "draw" || annotation.kind === "trace") &&
+      !annotation.groupId &&
+      (hovered || selected)
+        ? drawBoundsRing(annotation)
+        : [];
+    return {
+      line: lineFeature(
+        annotation.id,
+        annotation.kind,
+        annotation.coordinates,
+        selected,
+        color,
+        strokeWidth,
+        strokeOpacityFor(annotation),
+      ),
+      fill: null,
+      bounds:
+        bounds.length >= 4
+          ? polygonFeature(annotation.id, "bounds", bounds, selected, color, 0)
+          : null,
+      samples:
+        annotation.kind === "measure" && annotation.measurement
+          ? annotation.measurement.samples.map((sample) => ({
+              type: "Feature" as const,
+              properties: { id: annotation.id, kind: "measure" },
+              geometry: {
+                type: "Point" as const,
+                coordinates: sample.coordinate,
+              },
+            }))
+          : [],
+      arrows: arrowsFor(annotation, color, selected, strokeWidth),
+      marker: null,
+    };
+  }
+  if (isAreaAnnotation(annotation)) {
+    return {
+      ...EMPTY_PARTS,
+      fill: polygonFeature(
+        annotation.id,
+        annotation.kind,
+        areaRing(annotation),
+        selected,
+        color,
+        fillOpacityFor(annotation, hovered),
+        annotation.style?.strokeWidth ?? defaultStrokeWidth,
+        strokeOpacityFor(annotation),
+      ),
+    };
+  }
+  if (isMarkerAnnotation(annotation)) {
+    return { ...EMPTY_PARTS, marker: annotation };
+  }
+  return EMPTY_PARTS;
+}
+
+function annotationParts(
+  annotation: Annotation,
+  context: PartsContext,
+): AnnotationParts {
+  const cached = partsCache.get(annotation);
+  if (cached && sameContext(cached.context, context)) return cached.parts;
+  const parts = buildParts(annotation, context);
+  partsCache.set(annotation, { context, parts });
+  return parts;
+}
+
 export function buildAnnotationFeatures({
   annotations,
   draft = null,
@@ -244,61 +363,20 @@ export function buildAnnotationFeatures({
 
   for (const annotation of annotations) {
     if (!isAnnotationVisible(annotation)) continue;
-    const selected = selectedIds?.length
-      ? selectedIds.includes(annotation.id)
-      : annotation.id === selectedId;
-    const color = annotationColor(annotation, defaultColor);
-    if (isPathAnnotation(annotation)) {
-      const strokeWidth = annotation.style?.strokeWidth ?? defaultStrokeWidth;
-      lineFeatures.push(
-        lineFeature(
-          annotation.id,
-          annotation.kind,
-          annotation.coordinates,
-          selected,
-          color,
-          strokeWidth,
-          strokeOpacityFor(annotation),
-        ),
-      );
-      arrows.push(...arrowsFor(annotation, color, selected, strokeWidth));
-      if (
-        (annotation.kind === "draw" || annotation.kind === "trace") &&
-        !annotation.groupId &&
-        (annotation.id === hoveredId || selected)
-      ) {
-        const box = drawBoundsRing(annotation);
-        if (box.length >= 4) {
-          boundsFeatures.push(
-            polygonFeature(annotation.id, "bounds", box, selected, color, 0),
-          );
-        }
-      }
-      if (annotation.kind === "measure" && annotation.measurement) {
-        for (const sample of annotation.measurement.samples) {
-          sampleFeatures.push({
-            type: "Feature",
-            properties: { id: annotation.id, kind: "measure" },
-            geometry: { type: "Point", coordinates: sample.coordinate },
-          });
-        }
-      }
-    } else if (isAreaAnnotation(annotation)) {
-      fillFeatures.push(
-        polygonFeature(
-          annotation.id,
-          annotation.kind,
-          areaRing(annotation),
-          selected,
-          color,
-          fillOpacityFor(annotation, annotation.id === hoveredId),
-          annotation.style?.strokeWidth ?? defaultStrokeWidth,
-          strokeOpacityFor(annotation),
-        ),
-      );
-    } else if (isMarkerAnnotation(annotation)) {
-      markers.push(annotation);
-    }
+    const parts = annotationParts(annotation, {
+      selected: selectedIds?.length
+        ? selectedIds.includes(annotation.id)
+        : annotation.id === selectedId,
+      hovered: annotation.id === hoveredId,
+      defaultColor,
+      defaultStrokeWidth,
+    });
+    if (parts.line) lineFeatures.push(parts.line);
+    if (parts.fill) fillFeatures.push(parts.fill);
+    if (parts.bounds) boundsFeatures.push(parts.bounds);
+    if (parts.samples.length) sampleFeatures.push(...parts.samples);
+    if (parts.arrows.length) arrows.push(...parts.arrows);
+    if (parts.marker) markers.push(parts.marker);
   }
 
   if (draft) {

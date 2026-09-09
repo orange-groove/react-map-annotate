@@ -3,6 +3,34 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.14
+
+Live editing no longer goes through React. Dragging an annotation used to run a
+full session commit per pointer event: `setState` with the whole list, a render
+of the provider and every `useAnnotate()` consumer, a rebuild of every feature,
+and six source uploads. Now a gesture paints from a store that sits beside
+React, coalesced to one frame.
+
+- A drag no longer calls `setState`, `onChange`, or the `onUpdate` prop per
+  pointer event. Geometry lands on the map through an internal live store,
+  rAF-coalesced, and reaches the session, the host, and history once on
+  `endEdit`. `onCommit` still fires once at the end of the gesture.
+- **Behaviour change:** `onChange` no longer fires with `reason: "live"` unless
+  you set `emitLiveChanges` on `AnnotateProvider`, and even then it is throttled
+  to one call per frame. Hosts that were filtering `reason === "live"` can drop
+  the filter. `useAnnotate().annotations` is now deliberately stale for the span
+  of a drag; read `useLiveAnnotations()` if you need the in-flight geometry.
+- Feature building is incremental. An annotation whose geometry did not change
+  keeps its feature, and a source whose contents did not change keeps its
+  collection, so the map only re-uploads the source holding the annotation being
+  dragged.
+- Measure paths no longer re-sample against terrain on every frame. A drag keeps
+  the distance readout live from the vertices and hides the sample dots;
+  `settleMeasurement` re-samples once on commit.
+- The cursor is set on pointer-down and on change, not on every pointer move.
+- A programmatic `onUpdate` outside a gesture still commits immediately, and
+  still folds into one undo step until `endEdit`.
+
 ## 0.3.13
 
 A session-versus-persist pass, from integration feedback on an app that keeps

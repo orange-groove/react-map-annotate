@@ -55,6 +55,11 @@ import {
   cloneAnnotations,
   sameGeometry,
 } from "./history";
+import {
+  LiveEditProvider,
+  createLiveEditStore,
+  type LiveEditStore,
+} from "./live-edits";
 import { AnnotateFontLoader } from "./annotate-fonts";
 import { resolveAnnotateFonts } from "../core/utils/fonts";
 
@@ -88,6 +93,13 @@ export interface AnnotateSession {
   canFinish: boolean;
   finish: () => void;
   registerFinish: (fn: (() => void) | null) => void;
+  /**
+   * Lets the map layer settle live geometry before it is committed, for work
+   * too expensive to run per frame (measure sampling against terrain).
+   */
+  registerCommitTransform: (
+    fn: ((items: Annotation[]) => Annotation[]) | null,
+  ) => void;
   beginEdit: () => void;
   endEdit: () => void;
   /** True between the first live edit of a gesture and its commit. */
@@ -118,6 +130,13 @@ export interface AnnotateProviderProps extends AnnotateCallbacks {
   onChange?: (annotations: Annotation[], meta: ChangeMeta) => void;
   /** Fires only when a gesture ends or a discrete change lands. Persist here. */
   onCommit?: (annotations: Annotation[], meta: ChangeMeta) => void;
+  /**
+   * Also fire `onChange` while a gesture is in flight, at most once per frame.
+   * Off by default: live geometry paints from the library's own store, so a
+   * host that turns this on pays a render per frame for information it will
+   * receive again on commit.
+   */
+  emitLiveChanges?: boolean;
   fonts?: AnnotateFont[];
   defaultFontFamily?: string;
   showLabels?: boolean;
@@ -138,6 +157,7 @@ export function AnnotateProvider({
   selectedIds: selectedIdsProp,
   onChange,
   onCommit,
+  emitLiveChanges = false,
   onAdd: onAddProp,
   onUpdate: onUpdateProp,
   onDelete: onDeleteProp,
@@ -170,8 +190,17 @@ export function AnnotateProvider({
   const pastRef = useRef<Annotation[][]>([]);
   const futureRef = useRef<Annotation[][]>([]);
   const editingRef = useRef(false);
+  // Set only by beginEdit, which the pointer handlers call on pointer-down.
+  // While it is true, geometry belongs to the live store instead of state.
+  const gestureRef = useRef(false);
   const [isEditing, setIsEditing] = useState(false);
+  const liveRef = useRef<LiveEditStore>(undefined as never);
+  if (!liveRef.current) liveRef.current = createLiveEditStore();
+  const live = liveRef.current;
   const liveIdsRef = useRef<Set<string>>(new Set());
+  const commitTransformRef = useRef<
+    ((items: Annotation[]) => Annotation[]) | null
+  >(null);
   // The exact array last handed to onChange. A controlled host that passes it
   // straight back is echoing us, not supplying new truth.
   const lastEmittedRef = useRef<Annotation[] | undefined>(undefined);
@@ -232,7 +261,7 @@ export function AnnotateProvider({
     [commitAnnotations, pushPast, syncHistoryFlags],
   );
 
-  const beginEdit = useCallback(() => {
+  const openEdit = useCallback(() => {
     if (editingRef.current) return;
     pushPast();
     editingRef.current = true;
@@ -240,25 +269,36 @@ export function AnnotateProvider({
     syncHistoryFlags();
   }, [pushPast, syncHistoryFlags]);
 
+  const beginEdit = useCallback(() => {
+    openEdit();
+    gestureRef.current = true;
+  }, [openEdit]);
+
   const endEdit = useCallback(() => {
     if (!editingRef.current) return;
     editingRef.current = false;
+    gestureRef.current = false;
     setIsEditing(false);
+    const ids = [...liveIdsRef.current];
+    liveIdsRef.current.clear();
+    const drained = live.drain();
+    const settled = commitTransformRef.current
+      ? commitTransformRef.current(drained)
+      : drained;
+    // One React commit for the whole gesture.
+    if (settled.length > 0) {
+      const next = upsertAnnotations(annotationsRef.current, settled);
+      annotationsRef.current = next;
+      setAnnotationsState(next);
+      notify(next, { reason: "commit", cause: "edit", ids });
+      for (const item of settled) onUpdateProp?.(item);
+    }
     const last = pastRef.current[pastRef.current.length - 1];
     if (last && annotationsEqual(last, annotationsRef.current)) {
       pastRef.current = pastRef.current.slice(0, -1);
     }
     syncHistoryFlags();
-    const ids = [...liveIdsRef.current];
-    liveIdsRef.current.clear();
-    if (ids.length > 0) {
-      notify(annotationsRef.current, {
-        reason: "commit",
-        cause: "edit",
-        ids,
-      });
-    }
-  }, [notify, syncHistoryFlags]);
+  }, [live, notify, onUpdateProp, syncHistoryFlags]);
 
   const undo = useCallback(() => {
     if (editingRef.current) endEdit();
@@ -360,34 +400,43 @@ export function AnnotateProvider({
     [applySelection, endEdit, onAddProp, recordCommit],
   );
 
+  /**
+   * Inside a pointer gesture, geometry stays out of React state: it goes to
+   * the live store, paints from there, and reaches the session, the host, and
+   * history once at endEdit. A programmatic call still commits on the spot,
+   * and still folds into a single undo step until endEdit closes it.
+   */
+  const applyUpdates = useCallback(
+    (items: Annotation[]) => {
+      if (items.length === 0) return;
+      if (gestureRef.current) {
+        for (const item of items) liveIdsRef.current.add(item.id);
+        live.set(items);
+        return;
+      }
+      openEdit();
+      recordCommit(
+        upsertAnnotations(annotationsRef.current, items),
+        "edit",
+        items.map((item) => item.id),
+      );
+      for (const item of items) onUpdateProp?.(item);
+    },
+    [live, onUpdateProp, openEdit, recordCommit],
+  );
+
   const onUpdate = useCallback(
     (annotation: Annotation) => {
-      beginEdit();
-      liveIdsRef.current.add(annotation.id);
-      commitAnnotations(upsertAnnotation(annotationsRef.current, annotation), {
-        reason: "live",
-        cause: "edit",
-        ids: [annotation.id],
-      });
-      onUpdateProp?.(annotation);
+      applyUpdates([annotation]);
     },
-    [beginEdit, commitAnnotations, onUpdateProp],
+    [applyUpdates],
   );
 
   const onUpdateMany = useCallback(
     (items: Annotation[]) => {
-      if (items.length === 0) return;
-      beginEdit();
-      const ids = items.map((item) => item.id);
-      for (const id of ids) liveIdsRef.current.add(id);
-      commitAnnotations(upsertAnnotations(annotationsRef.current, items), {
-        reason: "live",
-        cause: "edit",
-        ids,
-      });
-      for (const item of items) onUpdateProp?.(item);
+      applyUpdates(items);
     },
-    [beginEdit, commitAnnotations, onUpdateProp],
+    [applyUpdates],
   );
 
   const onDelete = useCallback(
@@ -473,6 +522,28 @@ export function AnnotateProvider({
     finishImplRef.current = fn;
   }, []);
 
+  const registerCommitTransform = useCallback(
+    (fn: ((items: Annotation[]) => Annotation[]) | null) => {
+      commitTransformRef.current = fn;
+    },
+    [],
+  );
+
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
+
+  useEffect(() => {
+    if (!emitLiveChanges) return;
+    return live.subscribe(() => {
+      if (!live.isActive()) return;
+      notifyRef.current(live.apply(annotationsRef.current), {
+        reason: "live",
+        cause: "edit",
+        ids: [...liveIdsRef.current],
+      });
+    });
+  }, [emitLiveChanges, live]);
+
   const finish = useCallback(() => {
     if (finishImplRef.current) {
       finishImplRef.current();
@@ -486,23 +557,25 @@ export function AnnotateProvider({
 
   const setLabel = useCallback(
     (id: string, label: string) => {
+      // Land any in-flight gesture first so this reads current geometry.
+      endEdit();
       const match = annotationsRef.current.find(
         (annotation) => annotation.id === id,
       );
       if (!match) return;
       onLabelChange(id, label, setAnnotationLabel(match, label));
     },
-    [onLabelChange],
+    [endEdit, onLabelChange],
   );
 
   const setColor = useCallback(
     (id: string, color: string) => {
+      endEdit();
       const match = annotationsRef.current.find(
         (annotation) => annotation.id === id,
       );
       if (!match) return;
       const annotation = setAnnotationColor(match, color);
-      endEdit();
       recordCommit(
         upsertAnnotation(annotationsRef.current, annotation),
         "style",
@@ -515,12 +588,12 @@ export function AnnotateProvider({
 
   const setStyle = useCallback(
     (id: string, style: AnnotationStyle) => {
+      endEdit();
       const match = annotationsRef.current.find(
         (annotation) => annotation.id === id,
       );
       if (!match) return;
       const annotation = setAnnotationStyle(match, style);
-      endEdit();
       recordCommit(
         upsertAnnotation(annotationsRef.current, annotation),
         "style",
@@ -531,6 +604,7 @@ export function AnnotateProvider({
   );
 
   const removeSelected = useCallback(() => {
+    endEdit();
     const ids = selectedIdsRef.current;
     const id = selectedIdRef.current;
     if (ids.length === 0 && !id) return;
@@ -644,6 +718,7 @@ export function AnnotateProvider({
       canFinish: canPressFinish(tool, draft),
       finish,
       registerFinish,
+      registerCommitTransform,
       beginEdit,
       endEdit,
       isEditing,
@@ -679,6 +754,7 @@ export function AnnotateProvider({
       onUpdate,
       onUpdateMany,
       redo,
+      registerCommitTransform,
       registerFinish,
       removeSelected,
       replaceAnnotations,
@@ -704,8 +780,10 @@ export function AnnotateProvider({
 
   return (
     <AnnotateContext.Provider value={value}>
-      <AnnotateFontLoader fonts={fonts} />
-      {children}
+      <LiveEditProvider store={live}>
+        <AnnotateFontLoader fonts={fonts} />
+        {children}
+      </LiveEditProvider>
     </AnnotateContext.Provider>
   );
 }

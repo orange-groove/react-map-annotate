@@ -6,6 +6,7 @@ export { DefaultArrowHead } from "./paint/arrow-head";
 export { AnnotateToolIcon } from "./ui/tool-icon";
 export { AnnotateProvider } from "./session/annotate-context";
 export { useAnnotate, useOptionalAnnotate } from "./session/use-annotate";
+export { useLiveAnnotations } from "./session/live-edits";
 export {
   useAnnotateItems,
   useAnnotateTools,
@@ -83,6 +84,7 @@ export {
   measurePath,
   queryGroundElevation,
   formatMeasurement,
+  settleMeasurement,
   annotationFromDraft,
   annotationAreaMeters,
   previewCoordinates,

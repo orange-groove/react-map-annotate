@@ -11,6 +11,7 @@ import type {
 import { moveAnnotation } from "../core/utils/edit";
 import { isAdditiveSelect, nextSelectedIds } from "../core/utils/selection";
 import { startHandleDrag } from "../interaction/pointer-drag";
+import { useOptionalAnnotate } from "../session/annotate-context";
 
 function DefaultPin({ color, scale = 1 }: { color?: string; scale?: number }) {
   return (
@@ -55,6 +56,7 @@ export function AnnotationMarker({
 }) {
   const { Marker, useMap } = useMapGl();
   const maps = useMap();
+  const session = useOptionalAnnotate();
   const originRef = useRef(annotation.coordinate);
   const selectedAtRef = useRef(0);
   const scale = selected ? 1.15 : 1;
@@ -86,6 +88,7 @@ export function AnnotationMarker({
     if (!map) return;
     const originals = annotations.filter((item) => nextIds.includes(item.id));
     originRef.current = annotation.coordinate;
+    session?.beginEdit();
     startHandleDrag(
       event,
       map,
@@ -93,7 +96,9 @@ export function AnnotationMarker({
       (point, grab) => {
         if (originals.length > 1 && onUpdateMany) {
           onUpdateMany(
-            originals.map((item) => moveAnnotation(item, grab.from, point)),
+            originals.map((item) =>
+              moveAnnotation(item, grab.from, point, { preview: true }),
+            ),
           );
           return;
         }
@@ -102,6 +107,7 @@ export function AnnotationMarker({
             { ...annotation, coordinate: originRef.current },
             grab.from,
             point,
+            { preview: true },
           ),
         );
       },

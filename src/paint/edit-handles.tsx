@@ -136,6 +136,7 @@ function HandleMarker({
             map,
             from: grab.from,
             handleAt: grab.handle,
+            preview: true,
           }),
         );
       },
@@ -259,6 +260,7 @@ export function EditHandles({
           onUpdate={onUpdate}
           onDragStart={() => {
             setDragId(annotation.id);
+            session?.beginEdit();
           }}
           onDragEnd={() => {
             setDragId(null);

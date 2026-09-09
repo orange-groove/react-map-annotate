@@ -9,6 +9,7 @@ import type {
   Annotation,
   AreaAnnotation,
   LngLat,
+  Measurement,
   PathAnnotation,
   TextAnnotation,
 } from "../types";
@@ -18,9 +19,11 @@ import {
   circleRing,
   closeRing,
   destination,
+  formatDistance,
   haversineDistance,
   initialBearing,
   openRing,
+  pathLength,
   rectangleRing,
   ringCentroid,
   rotateLngLat,
@@ -45,6 +48,12 @@ const ROTATE_HANDLE_OFFSET_M = 18;
 export type TerrainEditOptions = {
   map?: TerrainMap | null;
   sampleIntervalMeters?: number;
+  /**
+   * Skip re-sampling a measure path. Sampling walks the line every 10 m and
+   * queries terrain at each sample, which is far too much for one frame of a
+   * drag. The map layer settles it once when the gesture commits.
+   */
+  preview?: boolean;
 };
 
 const PATH_ENDPOINT_KINDS = new Set<PathAnnotation["kind"]>([
@@ -64,10 +73,26 @@ export function offsetLngLat(point: LngLat, from: LngLat, to: LngLat): LngLat {
   return [point[0] + (to[0] - from[0]), point[1] + (to[1] - from[1])];
 }
 
+/**
+ * Distance without elevation, cheap enough to run every frame. A drag keeps
+ * the readout live and drops the sample dots until the gesture commits.
+ */
+export function previewMeasurement(coordinates: LngLat[]): Measurement {
+  return {
+    distanceMeters: pathLength(coordinates),
+    samples: [],
+    elevationGainMeters: 0,
+    elevationLossMeters: 0,
+    minElevationMeters: null,
+    maxElevationMeters: null,
+  };
+}
+
 export function moveAnnotation(
   annotation: Annotation,
   from: LngLat,
   to: LngLat,
+  options: { preview?: boolean } = {},
 ): Annotation {
   const shift = (point: LngLat) => offsetLngLat(point, from, to);
   if (annotation.kind === "marker" || annotation.kind === "text") {
@@ -81,9 +106,19 @@ export function moveAnnotation(
     };
   }
   if (annotation.kind === "measure" && annotation.measurement) {
+    const coordinates = annotation.coordinates.map(shift);
+    // A translation cannot change the distance, so only the samples move.
+    // Skip them mid-drag; a long path carries hundreds.
+    if (options.preview) {
+      return {
+        ...annotation,
+        coordinates,
+        measurement: { ...annotation.measurement, samples: [] },
+      };
+    }
     return {
       ...annotation,
-      coordinates: annotation.coordinates.map(shift),
+      coordinates,
       measurement: {
         ...annotation.measurement,
         samples: annotation.measurement.samples.map((sample) => ({
@@ -538,6 +573,14 @@ function withPathCoordinates(
     return annotation;
   }
 
+  if (annotation.kind === "measure" && options.preview) {
+    return {
+      ...annotation,
+      coordinates,
+      measurement: previewMeasurement(coordinates),
+      caption: formatDistance(pathLength(coordinates)),
+    };
+  }
   if (annotation.kind === "measure") {
     const measurement = measurePath(
       coordinates,
@@ -684,9 +727,7 @@ export function applyEditHandle(
   annotation: Annotation,
   handle: EditHandleHit,
   next: LngLat,
-  options: {
-    map?: TerrainMap | null;
-    sampleIntervalMeters?: number;
+  options: TerrainEditOptions & {
     from?: LngLat;
     handleAt?: LngLat;
   } = {},

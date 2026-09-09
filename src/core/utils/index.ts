@@ -70,6 +70,7 @@ export {
   removeAnnotation,
   removeAnnotations,
   annotationFromDraft,
+  settleMeasurement,
   minVerticesForKind,
   canFinishDraft,
   canPressFinish,

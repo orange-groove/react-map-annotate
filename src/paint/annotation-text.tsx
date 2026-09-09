@@ -13,6 +13,7 @@ import { isAdditiveSelect, nextSelectedIds } from "../core/utils/selection";
 import { handleInteraction } from "../core/utils/interaction";
 import { useMapGl } from "../engines/kit/context";
 import { startHandleDrag } from "../interaction/pointer-drag";
+import { useOptionalAnnotate } from "../session/annotate-context";
 
 export function AnnotationText({
   annotation,
@@ -43,6 +44,7 @@ export function AnnotationText({
 }) {
   const { Marker, useMap } = useMapGl();
   const maps = useMap();
+  const session = useOptionalAnnotate();
   const originRef = useRef(annotation);
   const [editing, setEditing] = useState(
     selected && annotation.label === DEFAULT_LABELS.text,
@@ -89,6 +91,7 @@ export function AnnotationText({
     if (additive) return;
     const originals = annotations.filter((item) => nextIds.includes(item.id));
     originRef.current = annotation;
+    session?.beginEdit();
     startHandleDrag(
       event,
       map,
@@ -96,11 +99,17 @@ export function AnnotationText({
       (point, grab) => {
         if (originals.length > 1 && onUpdateMany) {
           onUpdateMany(
-            originals.map((item) => moveAnnotation(item, grab.from, point)),
+            originals.map((item) =>
+              moveAnnotation(item, grab.from, point, { preview: true }),
+            ),
           );
           return;
         }
-        onUpdate?.(moveAnnotation(originRef.current, grab.from, point));
+        onUpdate?.(
+          moveAnnotation(originRef.current, grab.from, point, {
+            preview: true,
+          }),
+        );
       },
       () => onDragEnd?.(annotation.id),
     );
@@ -122,6 +131,7 @@ export function AnnotationText({
     const panWasEnabled = map.dragPan.isEnabled();
     map.dragPan.disable();
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    session?.beginEdit();
 
     const move = (next: PointerEvent) => {
       const dist = Math.hypot(next.clientX - originX, next.clientY - originY);

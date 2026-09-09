@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import type { AnnotateProps } from "../core/types";
+import { settleMeasurement } from "../core/utils/annotations";
 import { peekAnnotationClipboardItems } from "../core/utils/clipboard";
+import { useLiveAnnotations } from "../session/live-edits";
 import { useMapGl } from "../engines/kit/context";
 import { AnnotateLayers } from "../paint/gl-layers";
 import { GroupHoverBounds } from "../paint/group-hover-bounds";
@@ -27,8 +29,10 @@ export function Annotate({
   const session = useMapSession(props);
   const { Layers } = useMapGl();
   const PaintLayers = Layers ?? AnnotateLayers;
+  // Geometry from an in-flight gesture, painted without a session render.
+  const annotations = useLiveAnnotations(session.annotations);
   const latestRef = React.useRef({
-    annotations: session.annotations,
+    annotations,
     draft: session.draft,
     tool: session.tool,
     selectedId: session.selectedId,
@@ -49,6 +53,7 @@ export function Annotate({
     setSelectedVertexIndex: session.session.setSelectedVertexIndex,
     undo: session.session.undo,
     redo: session.session.redo,
+    beginEdit: session.session.beginEdit,
     endEdit: session.session.endEdit,
     removeSelected: session.session.removeSelected,
     groupSelected: session.session.groupSelected,
@@ -56,7 +61,7 @@ export function Annotate({
     trace: session.trace,
   });
   latestRef.current = {
-    annotations: session.annotations,
+    annotations,
     draft: session.draft,
     tool: session.tool,
     selectedId: session.selectedId,
@@ -77,6 +82,7 @@ export function Annotate({
     setSelectedVertexIndex: session.session.setSelectedVertexIndex,
     undo: session.session.undo,
     redo: session.session.redo,
+    beginEdit: session.session.beginEdit,
     endEdit: session.session.endEdit,
     removeSelected: session.session.removeSelected,
     groupSelected: session.session.groupSelected,
@@ -107,6 +113,20 @@ export function Annotate({
     return () => session.session.registerFinish(null);
   }, [finishDrawing, session.session]);
 
+  const { registerCommitTransform } = session.session;
+  const sampleIntervalMeters = session.sampleIntervalMeters;
+  React.useEffect(() => {
+    registerCommitTransform((items) =>
+      items.map((item) =>
+        settleMeasurement(item, {
+          map: resolveMap()?.getMap(),
+          sampleIntervalMeters,
+        }),
+      ),
+    );
+    return () => registerCommitTransform(null);
+  }, [registerCommitTransform, resolveMap, sampleIntervalMeters]);
+
   useMapKeyboard({
     interactive,
     latestRef,
@@ -132,7 +152,7 @@ export function Annotate({
     <>
       {terrain}
       <PaintLayers
-        annotations={session.annotations}
+        annotations={annotations}
         draft={session.draft}
         selectedId={session.selectedId}
         selectedIds={session.selectedIds}
@@ -154,7 +174,7 @@ export function Annotate({
         }}
       />
       <GroupHoverBounds
-        annotations={session.annotations}
+        annotations={annotations}
         hoveredId={hoveredId}
         showLabels={session.showLabels}
         defaultColor={session.defaultColor}
