@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AnnotateProvider } from "./annotate-context";
 import type { Annotation, ChangeMeta, PathAnnotation } from "../core/types";
+import type { AnnotateSession } from "./annotate-context";
 import { useAnnotate } from "./use-annotate";
 import { useLiveAnnotations } from "./live-edits";
 
@@ -370,27 +371,170 @@ describe("controlled mode", () => {
     expect(result.current.canUndo).toBe(true);
   });
 
+  interface HostControl {
+    /** A change the host itself makes: a load, a server push, its own undo. */
+    push: (annotations: Annotation[]) => void;
+    /** A re-render for some unrelated reason. */
+    touch: () => void;
+    /** Applies a deferred commit, for a host whose store lands out of band. */
+    flush: () => void;
+    commits: Annotation[][];
+  }
+
+  /**
+   * A host that keeps annotations in its own shape, remaps on the way in, and
+   * persists from `onCommit` alone. Every render produces a new array, so
+   * nothing it hands back is ever referentially ours.
+   */
+  function remappingHost({
+    keepGeometry = false,
+    defer = false,
+  }: { keepGeometry?: boolean; defer?: boolean } = {}) {
+    const control: HostControl = {
+      push: () => undefined,
+      touch: () => undefined,
+      flush: () => undefined,
+      commits: [],
+    };
+    function Wrapper({ children }: { children: ReactNode }) {
+      const [stored, setStored] = useState<Annotation[]>([line]);
+      const [, force] = useState(0);
+      control.push = setStored;
+      control.touch = () => force((count) => count + 1);
+      return (
+        <AnnotateProvider
+          annotations={stored.map((annotation) => ({
+            ...annotation,
+            data: { hostId: annotation.id },
+          }))}
+          onCommit={(next) => {
+            control.commits.push(next);
+            // A merge that keeps the host's own geometry never catches up.
+            if (keepGeometry) return;
+            const apply = () =>
+              setStored(next.map((annotation) => ({ ...annotation })));
+            if (defer) control.flush = apply;
+            else apply();
+          }}
+        >
+          {children}
+        </AnnotateProvider>
+      );
+    }
+    return { control, Wrapper };
+  }
+
+  async function drag(session: () => AnnotateSession, offset: number) {
+    act(() => {
+      session().beginEdit();
+      session().onUpdate(moved(offset));
+    });
+    await nextFrame();
+    act(() => {
+      session().endEdit();
+    });
+  }
+
+  it("does not snap back for a host that remaps instead of echoing", async () => {
+    const { control, Wrapper } = remappingHost();
+    const { result } = renderHook(() => useAnnotate(), { wrapper: Wrapper });
+
+    await drag(() => result.current, 0.03);
+
+    expect(control.commits).toHaveLength(1);
+    expect(endOf(control.commits[0]?.[0])).toEqual(moved(0.03).coordinates[1]);
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.03).coordinates[1],
+    );
+
+    // Whatever else makes the host re-render, the commit holds.
+    act(() => {
+      control.touch();
+    });
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.03).coordinates[1],
+    );
+    // The host's own fields still come through.
+    expect(result.current.annotations[0]?.data).toEqual({ hostId: "l1" });
+  });
+
+  it("holds the commit while the host's store catches up out of band", async () => {
+    const { control, Wrapper } = remappingHost({ defer: true });
+    const { result } = renderHook(() => useAnnotate(), { wrapper: Wrapper });
+
+    await drag(() => result.current, 0.07);
+
+    // The host has been told, but its store has not landed. Anything that
+    // re-renders it now hands us back the pre-drag geometry.
+    act(() => {
+      control.touch();
+    });
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.07).coordinates[1],
+    );
+
+    act(() => {
+      control.flush();
+    });
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.07).coordinates[1],
+    );
+    expect(result.current.annotations[0]?.data).toEqual({ hostId: "l1" });
+  });
+
+  it("holds the line when the host merge drops our geometry", async () => {
+    const { control, Wrapper } = remappingHost({ keepGeometry: true });
+    const { result } = renderHook(() => useAnnotate(), { wrapper: Wrapper });
+
+    await drag(() => result.current, 0.04);
+    act(() => {
+      control.touch();
+    });
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.04).coordinates[1],
+    );
+
+    // Two drags in a row, each still ours.
+    await drag(() => result.current, 0.06);
+    act(() => {
+      control.touch();
+    });
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.06).coordinates[1],
+    );
+  });
+
+  it("still takes a load, and host geometry once the host is in step", async () => {
+    const second: Annotation = { ...line, id: "l2" };
+    const { control, Wrapper } = remappingHost();
+    const { result } = renderHook(() => useAnnotate(), { wrapper: Wrapper });
+
+    await drag(() => result.current, 0.02);
+
+    // A different id set is a load, not a stale render.
+    act(() => {
+      control.push([line, second]);
+    });
+    expect(result.current.annotations).toHaveLength(2);
+    expect(result.current.canUndo).toBe(false);
+
+    // And with the host in step, it can move geometry again.
+    act(() => {
+      control.push([moved(0.5), second]);
+    });
+    expect(endOf(result.current.annotations[0])).toEqual(
+      moved(0.5).coordinates[1],
+    );
+  });
+
   it("ignores an external array that lands mid-gesture", async () => {
-    const { result, rerender } = renderHook(
-      ({ annotations }: { annotations: Annotation[] }) => {
-        void annotations;
+    const { control, Wrapper } = remappingHost();
+    const { result } = renderHook(
+      () => {
         const session = useAnnotate();
         return { session, painted: useLiveAnnotations(session.annotations) };
       },
-      {
-        initialProps: { annotations: [line] },
-        wrapper: ({
-          children,
-          annotations,
-        }: {
-          children: ReactNode;
-          annotations?: Annotation[];
-        }) => (
-          <AnnotateProvider annotations={annotations ?? [line]}>
-            {children}
-          </AnnotateProvider>
-        ),
-      },
+      { wrapper: Wrapper },
     );
 
     act(() => {
@@ -398,7 +542,9 @@ describe("controlled mode", () => {
       result.current.session.onUpdate(moved(0.05));
     });
     await nextFrame();
-    rerender({ annotations: [{ ...line, label: "From the server" }] });
+    act(() => {
+      control.push([{ ...line, label: "From the server" }]);
+    });
 
     // The drag owns the map until it ends.
     expect(endOf(result.current.painted[0])).toEqual(

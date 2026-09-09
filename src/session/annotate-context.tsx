@@ -54,6 +54,7 @@ import {
   annotationsEqual,
   cloneAnnotations,
   sameGeometry,
+  sameIds,
 } from "./history";
 import {
   LiveEditProvider,
@@ -204,6 +205,10 @@ export function AnnotateProvider({
   // The exact array last handed to onChange. A controlled host that passes it
   // straight back is echoing us, not supplying new truth.
   const lastEmittedRef = useRef<Annotation[] | undefined>(undefined);
+  // The geometry of our last commit, held until a controlled host catches up.
+  // A host that remaps annotations can only ever hand back a new array, so
+  // reference identity cannot tell its stale render apart from real news.
+  const committedRef = useRef<Annotation[] | undefined>(undefined);
 
   const annotations = annotationsState;
   const annotationsRef = useRef(annotations);
@@ -236,6 +241,7 @@ export function AnnotateProvider({
   const notify = useCallback(
     (next: Annotation[], meta: ChangeMeta) => {
       lastEmittedRef.current = next;
+      if (meta.reason === "commit") committedRef.current = next;
       onChange?.(next, meta);
       if (meta.reason === "commit") onCommit?.(next, meta);
     },
@@ -670,6 +676,25 @@ export function AnnotateProvider({
     // Never swap geometry out from under an in-flight gesture. The host gets
     // the authoritative array again on endEdit.
     if (editingRef.current) return;
+    // A host that remaps annotations on the way in — through GeoJSON, a store,
+    // a fetch — hands back a fresh array on the render right after a commit,
+    // still carrying the geometry we just replaced. Adopting it would undo the
+    // gesture. Our commit stays authoritative for this id set until the host
+    // catches up; a different id set is a real load and always applies.
+    const committed = committedRef.current;
+    if (
+      committed &&
+      sameIds(annotationsProp, annotationsRef.current) &&
+      sameGeometry(annotationsRef.current, committed) &&
+      !sameGeometry(annotationsProp, committed)
+    ) {
+      return;
+    }
+    // The host is in step with us again, so stop holding the line: from here a
+    // geometry change from the host is news, not a stale render.
+    if (committed && sameGeometry(annotationsProp, committed)) {
+      committedRef.current = undefined;
+    }
     if (annotationsEqual(annotationsProp, annotationsRef.current)) return;
     // A host remap (colour normalising, dropped fields, re-ordered keys) leaves
     // geometry alone, so adopt it without throwing away undo.

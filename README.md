@@ -204,6 +204,28 @@ is running, and treats an array you hand straight back as your echo rather than
 new truth. Remapping colors or adding your own fields on the way through no
 longer resets undo or fights the drag.
 
+You do not have to hand the same array back. If you keep annotations in your own
+shape and remap on the way in — through GeoJSON, a store, a fetch — every render
+gives the provider a new array, so it cannot recognise your echo by reference.
+It falls back to the geometry it just committed: for as long as the id set is
+unchanged, a `annotations` prop that disagrees with that commit is treated as a
+render your store has not caught up with, and dropped. This is what stops a
+drag snapping back on a host that persists from `onCommit` alone:
+
+```tsx
+<AnnotateProvider
+  annotations={toLibAnnotations(annotations)}
+  onCommit={(next) => setAnnotations((current) => merge(next, current))}
+/>
+```
+
+Adding or removing an annotation changes the id set, so loading a project or
+receiving one from a collaborator always applies. Once your array agrees with
+the last commit, the library steps back and your geometry is authoritative
+again. To move existing geometry from outside the map without waiting for that,
+call `setAnnotations` from `useAnnotate()` instead of routing it through the
+prop.
+
 ### Persist annotations to a database
 
 `onChange` fires on add, move, resize, label, color, and delete. Put

@@ -3,6 +3,17 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.15
+
+- Controlled mode no longer needs the host to echo the same array back. A host
+  that remaps annotations on the way in produces a new array every render, so
+  reference identity cannot tell a stale render apart from real news: the
+  provider now also holds the geometry of its last commit, and drops an incoming
+  `annotations` prop that disagrees with it while the id set is unchanged. Fixes
+  a drag snapping back for a host that persists from `onCommit` alone and keeps
+  annotations in its own shape. A changed id set is a load and always applies,
+  and the library steps back as soon as the host's array agrees with the commit.
+
 ## 0.3.14
 
 Live editing no longer goes through React. Dragging an annotation used to run a

@@ -43,6 +43,18 @@ function sameAnnotationGeometry(a: Annotation, b: Annotation): boolean {
 }
 
 /**
+ * The same annotations, whatever order they arrive in and whatever they carry.
+ * Tells a host array that is merely behind apart from a genuinely different
+ * list, such as a project load.
+ */
+export function sameIds(a: Annotation[], b: Annotation[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  const ids = new Set(b.map((annotation) => annotation.id));
+  return a.every((annotation) => ids.has(annotation.id));
+}
+
+/**
  * Compares only what the map paints and edits. Two lists are the same geometry
  * when ids, kinds, and positions line up, even if the host has remapped
  * colours, labels, or its own `data` fields.
