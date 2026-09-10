@@ -3,6 +3,29 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.17
+
+Remapping hosts persist with `onCommit` only. Keeping annotations in your own
+shape — GeoJSON, a store, a fetch — means every render hands the provider a new
+array, and a store that lands a turn later hands it a stale one. Neither loses a
+change now.
+
+- A gesture always tells the host what it did. `endEdit` used to commit only
+  what it could drain from the live store, so a move whose geometry reached the
+  session by any other route ended silently and never reached `onCommit`. It now
+  commits whenever the list differs from what the host was last told.
+- The reverse, too: a gesture that changed nothing no longer commits. Pressing a
+  marker, a handle, or a label and letting go without moving it used to fire
+  `onCommit`, which for a host that persists from `onCommit` meant a save on
+  every click.
+- A stale `annotations` prop no longer clobbers an add or a delete. The provider
+  already held its last commit against a host whose store had not caught up; it
+  now also holds the list that commit replaced, so a render still carrying the
+  pre-commit id set is recognised as behind rather than taken for a load.
+- Order is no longer geometry. A host merge that hands the same shapes back in a
+  different order counts as being in step, so the provider stops holding the
+  line and undo history survives.
+
 ## 0.3.16
 
 - Labels drag their annotation. A label was a caption you could only click,

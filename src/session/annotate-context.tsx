@@ -205,10 +205,14 @@ export function AnnotateProvider({
   // The exact array last handed to onChange. A controlled host that passes it
   // straight back is echoing us, not supplying new truth.
   const lastEmittedRef = useRef<Annotation[] | undefined>(undefined);
-  // The geometry of our last commit, held until a controlled host catches up.
-  // A host that remaps annotations can only ever hand back a new array, so
-  // reference identity cannot tell its stale render apart from real news.
+  // Our last commit, and the list it replaced, held until a controlled host
+  // catches up. A host that remaps annotations can only ever hand back a new
+  // array, so reference identity cannot tell its stale render apart from real
+  // news; these two are what a stale render is recognised against.
   const committedRef = useRef<Annotation[] | undefined>(undefined);
+  const replacedRef = useRef<Annotation[] | undefined>(undefined);
+  // The session list as it stood when the current gesture opened.
+  const editStartRef = useRef<Annotation[] | undefined>(undefined);
 
   const annotations = annotationsState;
   const annotationsRef = useRef(annotations);
@@ -239,9 +243,12 @@ export function AnnotateProvider({
   }, []);
 
   const notify = useCallback(
-    (next: Annotation[], meta: ChangeMeta) => {
+    (next: Annotation[], meta: ChangeMeta, previous?: Annotation[]) => {
       lastEmittedRef.current = next;
-      if (meta.reason === "commit") committedRef.current = next;
+      if (meta.reason === "commit") {
+        replacedRef.current = previous;
+        committedRef.current = next;
+      }
       onChange?.(next, meta);
       if (meta.reason === "commit") onCommit?.(next, meta);
     },
@@ -250,9 +257,10 @@ export function AnnotateProvider({
 
   const commitAnnotations = useCallback(
     (next: Annotation[], meta: ChangeMeta) => {
+      const previous = annotationsRef.current;
       annotationsRef.current = next;
       setAnnotationsState(next);
-      notify(next, meta);
+      notify(next, meta, previous);
     },
     [notify],
   );
@@ -270,6 +278,7 @@ export function AnnotateProvider({
   const openEdit = useCallback(() => {
     if (editingRef.current) return;
     pushPast();
+    editStartRef.current = annotationsRef.current;
     editingRef.current = true;
     setIsEditing(true);
     syncHistoryFlags();
@@ -287,17 +296,32 @@ export function AnnotateProvider({
     setIsEditing(false);
     const ids = [...liveIdsRef.current];
     liveIdsRef.current.clear();
+    const started = editStartRef.current;
+    editStartRef.current = undefined;
     const drained = live.drain();
     const settled = commitTransformRef.current
       ? commitTransformRef.current(drained)
       : drained;
+    const previous = annotationsRef.current;
+    const merged =
+      settled.length > 0 ? upsertAnnotations(previous, settled) : previous;
+    const changed = merged !== previous && !annotationsEqual(previous, merged);
+    const next = changed ? merged : previous;
     // One React commit for the whole gesture.
-    if (settled.length > 0) {
-      const next = upsertAnnotations(annotationsRef.current, settled);
+    if (changed) {
       annotationsRef.current = next;
       setAnnotationsState(next);
-      notify(next, { reason: "commit", cause: "edit", ids });
-      for (const item of settled) onUpdateProp?.(item);
+    }
+    // What the host was last told, which is what separates a gesture that
+    // moved something from one that ended where it began. Whether the geometry
+    // came from the gesture's own store or reached state some other way, the
+    // host hears about it once; a click that moved nothing stays quiet.
+    const known = committedRef.current ?? started ?? previous;
+    if (!annotationsEqual(known, next)) {
+      notify(next, { reason: "commit", cause: "edit", ids }, known);
+      if (changed) {
+        for (const item of settled) onUpdateProp?.(item);
+      }
     }
     const last = pastRef.current[pastRef.current.length - 1];
     if (last && annotationsEqual(last, annotationsRef.current)) {
@@ -678,22 +702,34 @@ export function AnnotateProvider({
     if (editingRef.current) return;
     // A host that remaps annotations on the way in — through GeoJSON, a store,
     // a fetch — hands back a fresh array on the render right after a commit,
-    // still carrying the geometry we just replaced. Adopting it would undo the
-    // gesture. Our commit stays authoritative for this id set until the host
-    // catches up; a different id set is a real load and always applies.
+    // still carrying what we just replaced. Adopting it would undo the change.
+    // Our commit stays authoritative until the host comes back carrying it.
     const committed = committedRef.current;
-    if (
-      committed &&
-      sameIds(annotationsProp, annotationsRef.current) &&
-      sameGeometry(annotationsRef.current, committed) &&
-      !sameGeometry(annotationsProp, committed)
-    ) {
-      return;
-    }
-    // The host is in step with us again, so stop holding the line: from here a
-    // geometry change from the host is news, not a stale render.
-    if (committed && sameGeometry(annotationsProp, committed)) {
-      committedRef.current = undefined;
+    const replaced = replacedRef.current;
+    if (committed) {
+      const disarm = () => {
+        committedRef.current = undefined;
+        replacedRef.current = undefined;
+      };
+      if (sameIds(annotationsProp, committed)) {
+        // The same shapes in different places: a render the host's store has
+        // not caught up with. Once the places agree the host is in step, and
+        // from there its geometry is news rather than a stale render.
+        if (!sameGeometry(annotationsProp, committed)) return;
+        disarm();
+      } else if (
+        replaced &&
+        sameIds(annotationsProp, replaced) &&
+        sameGeometry(annotationsProp, replaced)
+      ) {
+        // The list exactly as it was before the commit: an add or a delete
+        // the host has not applied yet.
+        return;
+      } else {
+        // Neither our commit nor what it replaced. A load, a collaborator, an
+        // edit the host made itself: it wins.
+        disarm();
+      }
     }
     if (annotationsEqual(annotationsProp, annotationsRef.current)) return;
     // A host remap (colour normalising, dropped fields, re-ordered keys) leaves

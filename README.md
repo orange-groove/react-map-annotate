@@ -207,10 +207,10 @@ longer resets undo or fights the drag.
 You do not have to hand the same array back. If you keep annotations in your own
 shape and remap on the way in — through GeoJSON, a store, a fetch — every render
 gives the provider a new array, so it cannot recognise your echo by reference.
-It falls back to the geometry it just committed: for as long as the id set is
-unchanged, a `annotations` prop that disagrees with that commit is treated as a
-render your store has not caught up with, and dropped. This is what stops a
-drag snapping back on a host that persists from `onCommit` alone:
+It falls back to what it just committed, and to the list that commit replaced. A
+prop carrying either one is a render your store has not caught up with, and is
+dropped. That covers a move whose new position has not landed yet, and an add or
+a delete your store applies a turn later. This is the whole host:
 
 ```tsx
 <AnnotateProvider
@@ -219,9 +219,15 @@ drag snapping back on a host that persists from `onCommit` alone:
 />
 ```
 
-Adding or removing an annotation changes the id set, so loading a project or
-receiving one from a collaborator always applies. Once your array agrees with
-the last commit, the library steps back and your geometry is authoritative
+Nothing else is required: no `onChange`, no `onUpdate`, no `flushSync`. Every
+change lands in `onCommit` exactly once — the end of a drag, add, delete, style,
+label, group, ungroup, undo, redo — and a gesture that moved nothing does not
+commit at all, so a click on a shape will not mark your project dirty.
+
+Anything that is neither the commit nor what it replaced is real news and
+applies: a project load, a collaborator, an edit you made yourself. Order does
+not count as a difference, so a merge is free to reorder. Once your array agrees
+with the last commit the library steps back and your geometry is authoritative
 again. To move existing geometry from outside the map without waiting for that,
 call `setAnnotations` from `useAnnotate()` instead of routing it through the
 prop.

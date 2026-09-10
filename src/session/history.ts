@@ -57,12 +57,15 @@ export function sameIds(a: Annotation[], b: Annotation[]): boolean {
 /**
  * Compares only what the map paints and edits. Two lists are the same geometry
  * when ids, kinds, and positions line up, even if the host has remapped
- * colours, labels, or its own `data` fields.
+ * colours, labels, or its own `data` fields. Order is not geometry: a host
+ * merge is free to hand the same shapes back in a different order.
  */
 export function sameGeometry(a: Annotation[], b: Annotation[]): boolean {
   if (a === b) return true;
   if (a.length !== b.length) return false;
-  return a.every((annotation, index) =>
-    sameAnnotationGeometry(annotation, b[index]),
-  );
+  const byId = new Map(b.map((annotation) => [annotation.id, annotation]));
+  return a.every((annotation) => {
+    const match = byId.get(annotation.id);
+    return match !== undefined && sameAnnotationGeometry(annotation, match);
+  });
 }
