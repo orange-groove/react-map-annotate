@@ -18,8 +18,8 @@ export function PersistAnnotations({ token }: { token: string }) {
   return (
     <AnnotateProvider
       annotations={annotations}
-      onChange={(next) => {
-        setAnnotations(next);
+      onChange={setAnnotations}
+      onCommit={(next) => {
         void fetch("/api/annotations", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

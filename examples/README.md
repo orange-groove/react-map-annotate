@@ -9,7 +9,7 @@ component.
 | [`custom-toolbar.tsx`](./custom-toolbar.tsx)     | `useAnnotateTools()` — your buttons, same session |
 | [`custom-list.tsx`](./custom-list.tsx)           | `useAnnotateItems()` — your sidebar               |
 | [`controlled-state.tsx`](./controlled-state.tsx) | `annotations` / `onChange`                        |
-| [`persist.tsx`](./persist.tsx)                   | Save `Annotation[]` with `fetch`                  |
+| [`persist.tsx`](./persist.tsx)                   | Save `Annotation[]` from `onCommit`               |
 | [`zustand.tsx`](./zustand.tsx)                   | The same props on a Zustand store                 |
 | [`measure.tsx`](./measure.tsx)                   | A measure button, not a map control               |
 | [`fonts.tsx`](./fonts.tsx)                       | Custom font catalog on the provider               |

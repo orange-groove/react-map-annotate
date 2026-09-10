@@ -1,25 +1,15 @@
 # @orange-groove/react-map-annotate
 
 Draw on Mapbox, MapLibre, Google, Leaflet, or ArcGIS. The map only paints. **You**
-choose the tool, finish the shape, and persist `Annotation[]` like any other
-React state.
+call `setTool` and `finish` from your own buttons, and persist the `Annotation[]`
+`onCommit` hands you like any other React state.
 
-[![npm](https://img.shields.io/npm/v/@orange-groove/react-map-annotate)](https://www.npmjs.com/package/@orange-groove/react-map-annotate)
-[![demo](https://img.shields.io/badge/demo-live-brightgreen)](https://react-map-annotate-demo.onrender.com/)
-[![CI](https://github.com/orange-groove/react-map-annotate/actions/workflows/ci.yml/badge.svg)](https://github.com/orange-groove/react-map-annotate/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@orange-groove/react-map-annotate)](./LICENSE)
+[npm](https://www.npmjs.com/package/@orange-groove/react-map-annotate)
+[demo](https://react-map-annotate-demo.onrender.com/)
+[CI](https://github.com/orange-groove/react-map-annotate/actions/workflows/ci.yml)
+[license](./LICENSE)
 
 [Live demo](https://react-map-annotate-demo.onrender.com/) — Mapbox, MapLibre, Google, Leaflet, and ArcGIS.
-
-**Status:** 0.3 is the public API. Pin the version. The session contract —
-`Annotation[]`, `setTool`, `finish`, `onChange` — is what we intend to keep.
-Other surfaces can still change before 1.0; see the [changelog](./CHANGELOG.md)
-and [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
-
-![A custom toolbar drawing a polygon; the annotations array updates in React state](./docs/demo.gif)
-
-Your buttons call `setTool("polygon")` and `finish()`. The map draws. `onChange`
-gives you the same `Annotation[]` you would save to a database.
 
 ## Install
 
@@ -34,6 +24,7 @@ the session yourself.
 import "@orange-groove/react-map-annotate/styles.css";
 ```
 
+
 | Map      | Also install                                          |
 | -------- | ----------------------------------------------------- |
 | Mapbox   | `react-map-gl` ≥ 8, `mapbox-gl` ≥ 3                   |
@@ -41,6 +32,7 @@ import "@orange-groove/react-map-annotate/styles.css";
 | Google   | `@vis.gl/react-google-maps` ≥ 1                       |
 | Leaflet  | `leaflet` ≥ 1.9, `react-leaflet` ≥ 4 (v5 on React 19) |
 | ArcGIS   | `@arcgis/core` ≥ 4.28                                 |
+
 
 ## Quick start
 
@@ -113,7 +105,7 @@ import {
 
 Those two components are example consumers of `useAnnotateTools()` and
 `useAnnotateItems()`. Replace them when your design system shows up. Full
-samples: [`examples/`](./examples).
+samples: `[examples/](./examples)`.
 
 ## Compare
 
@@ -125,13 +117,15 @@ control without a React session, or when you need OpenLayers.
 This library is for when the drawing session itself is React state: the same
 `Annotation[]` your toolbar, list, and database already speak.
 
+
 |                       | This library                                                                 | Terra Draw                                                                                             | Mapbox GL Draw                                                | Leaflet.Draw                        | Google Drawing Manager                      |
 | --------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
-| React state ownership | `Annotation[]` on the provider. `onChange` is the write path.                | Internal GeoJSON store. Snapshot it (`getSnapshot`) and subscribe to change events to sync into React. | Draw's feature store (`getAll` / `set`). Sync out via events. | Layers on the map.                  | Overlay objects on the map.                 |
+| React state ownership | `Annotation[]` on the provider. `onCommit` is the write path.                | Internal GeoJSON store. Snapshot it (`getSnapshot`) and subscribe to change events to sync into React. | Draw's feature store (`getAll` / `set`). Sync out via events. | Layers on the map.                  | Overlay objects on the map.                 |
 | Custom UI APIs        | Headless hooks: `useAnnotate()`, `useAnnotateTools()`, `useAnnotateItems()`. | Imperative instance API. Fully controllable; no React hooks.                                           | `changeMode`; hide or restyle the default control.            | Custom `L.Control`, or hide theirs. | `drawingControl: false` + `setDrawingMode`. |
 | Supported engines     | Mapbox, MapLibre, Google, Leaflet, ArcGIS                                    | Mapbox, MapLibre, Google, Leaflet, OpenLayers                                                          | Mapbox (MapLibre via community ports)                         | Leaflet                             | Google Maps                                 |
 | Built-in editing      | Move, vertex drag, rotate, mid-edge insert, vertex delete, undo / redo       | Select mode (drag, scale, rotate) plus undo / redo                                                     | `simple_select` / `direct_select`                             | Edit / delete handlers              | Limited after the shape is placed           |
 | Measurement           | Geodesic path, 10 m samples, optional terrain elevation                      | Not built in. Measure from the GeoJSON you already have.                                               | Not built in.                                                 | Not built in.                       | Not built in.                               |
+
 
 Engine-locked managers (Mapbox GL Draw, Leaflet.Draw, Google Drawing Manager)
 are the right tool when you want their control on that one map. They were not
@@ -150,9 +144,9 @@ finish();
 ```
 
 For a row of buttons with undo, redo, and icons, use `useAnnotateTools()` —
-see [`examples/custom-toolbar.tsx`](./examples/custom-toolbar.tsx). For a
+see `[examples/custom-toolbar.tsx](./examples/custom-toolbar.tsx)`. For a
 sidebar that names, recolors, and deletes rows, see
-[`examples/custom-list.tsx`](./examples/custom-list.tsx).
+`[examples/custom-list.tsx](./examples/custom-list.tsx)`.
 
 ### A drag does not go through your state
 
@@ -190,6 +184,8 @@ If you do want the in-flight geometry, ask for it explicitly rather than paying
 for it everywhere:
 
 ```tsx
+import { useLiveAnnotations } from "@orange-groove/react-map-annotate/core";
+
 // Re-renders once per frame during a drag, and only this component.
 const live = useLiveAnnotations(useAnnotate().annotations);
 ```
@@ -234,15 +230,17 @@ prop.
 
 ### Persist annotations to a database
 
-`onChange` fires on add, move, resize, label, color, and delete. Put
-`Annotation[]` in the request body. Load the same array back into
-`annotations`.
+Persist from `onCommit`. It fires once per landed change — the end of a drag,
+add, move, resize, label, color, delete, group, ungroup, undo, redo — and never
+mid-gesture, so a save is one request per change rather than one per frame. A
+gesture that moved nothing does not commit at all. Put `Annotation[]` in the
+request body and load the same array back into `annotations`.
 
 ```tsx
 <AnnotateProvider
   annotations={annotations}
-  onChange={(next) => {
-    setAnnotations(next);
+  onChange={setAnnotations}
+  onCommit={(next) => {
     void fetch("/api/annotations", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -252,14 +250,20 @@ prop.
 >
 ```
 
+`onChange` is the session write path: keep your React state in step with it.
+`onCommit` is the persistence path. If your state is the annotations array
+itself, use both as above; if you keep annotations in your own shape and remap
+on the way in, drop `onChange` and set state from `onCommit` alone — see
+[A drag does not go through your state](#a-drag-does-not-go-through-your-state).
+
 Granular `onAdd` / `onDelete` / `onLabelChange` / `onColorChange` are there
 when you need an audit trail. Full file:
-[`examples/persist.tsx`](./examples/persist.tsx).
+`[examples/persist.tsx](./examples/persist.tsx)`.
 
 ### Use with Zustand
 
 The provider does not care where the array lives. Pass store getters and
-setters as `annotations` / `onChange`.
+setters as `annotations` / `onChange`, and add `onCommit` where you persist.
 
 ```tsx
 import { create } from "zustand";
@@ -279,7 +283,7 @@ const setAnnotations = useAnnotations((state) => state.setAnnotations);
 <AnnotateProvider annotations={annotations} onChange={setAnnotations}>
 ```
 
-[`examples/zustand.tsx`](./examples/zustand.tsx). Redux, Jotai, and
+`[examples/zustand.tsx](./examples/zustand.tsx)`. Redux, Jotai, and
 `localStorage` follow the same two props.
 
 ### Switch from Mapbox to MapLibre
@@ -300,15 +304,17 @@ import "maplibre-gl/dist/maplibre-gl.css";
 </Map>;
 ```
 
-[`examples/maplibre.tsx`](./examples/maplibre.tsx). Other engines:
+`[examples/maplibre.tsx](./examples/maplibre.tsx)`. Other engines:
+
 
 | Engine   | `Annotate` import                                | Example                                            |
 | -------- | ------------------------------------------------ | -------------------------------------------------- |
-| Mapbox   | `@orange-groove/react-map-annotate` or `/mapbox` | [`examples/mapbox.tsx`](./examples/mapbox.tsx)     |
-| MapLibre | `/maplibre`                                      | [`examples/maplibre.tsx`](./examples/maplibre.tsx) |
-| Google   | `/google`                                        | [`examples/google.tsx`](./examples/google.tsx)     |
-| Leaflet  | `/leaflet`                                       | [`examples/leaflet.tsx`](./examples/leaflet.tsx)   |
-| ArcGIS   | `/arcgis`                                        | [`examples/arcgis.tsx`](./examples/arcgis.tsx)     |
+| Mapbox   | `@orange-groove/react-map-annotate` or `/mapbox` | `[examples/mapbox.tsx](./examples/mapbox.tsx)`     |
+| MapLibre | `/maplibre`                                      | `[examples/maplibre.tsx](./examples/maplibre.tsx)` |
+| Google   | `/google`                                        | `[examples/google.tsx](./examples/google.tsx)`     |
+| Leaflet  | `/leaflet`                                       | `[examples/leaflet.tsx](./examples/leaflet.tsx)`   |
+| ArcGIS   | `/arcgis`                                        | `[examples/arcgis.tsx](./examples/arcgis.tsx)`     |
+
 
 Session imports stay on `/core`. Engine entries still re-export the session so
 existing `/mapbox` (and root) imports keep working.
@@ -341,7 +347,7 @@ const { setTool, finish, canFinish } = useAnnotate();
 
 Two clicks complete a measure. The saved annotation includes geodesic
 `distanceMeters` and, with terrain enabled, elevation samples along the path.
-[`examples/measure.tsx`](./examples/measure.tsx).
+`[examples/measure.tsx](./examples/measure.tsx)`.
 
 ### Enable Trace on Google, Leaflet, and ArcGIS
 
@@ -408,6 +414,7 @@ so a sidebar can show "Measurement 3" while the map shows `1.2 km`.
 
 ## Styling strokes and fills
 
+
 | Field              | What it does                                            |
 | ------------------ | ------------------------------------------------------- |
 | `color`            | Stroke and fill color.                                  |
@@ -415,6 +422,7 @@ so a sidebar can show "Measurement 3" while the map shows `1.2 km`.
 | `strokeOpacity`    | Stroke alpha. Defaults to 0.95.                         |
 | `fillOpacity`      | Resting fill alpha for areas. Defaults to 0.            |
 | `hoverFillOpacity` | Fill alpha on hover. Defaults to `fillOpacity` or 0.18. |
+
 
 Keep `color` to `#RRGGBB` or a CSS color. Mapbox and MapLibre read the color
 from a data property, and 8-digit `#RRGGBBAA` is not valid there — the shaft
@@ -492,35 +500,35 @@ item.setStyle({ fontFamily: fonts[1]?.family });
 Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 
 - **Select** — click an annotation to select it. Shift-click or ⌘/Ctrl-click
-  adds or removes. Drag an empty area to draw a dotted box; everything inside
-  is selected. Hold Shift while dragging the box to add to the selection.
+adds or removes. Drag an empty area to draw a dotted box; everything inside
+is selected. Hold Shift while dragging the box to add to the selection.
 - **Trace** — hover a road or building outline to highlight it. Click to
-  keep that feature. Move the finished shape by its bounds box; it has no
-  vertex handles.
+keep that feature. Move the finished shape by its bounds box; it has no
+vertex handles.
 - **Freehand, circle, rectangle** — complete on mouse up.
 - **Line, arrow, bidirectional arrow, measure** — complete on the second click.
 - **Polygon** — click vertices, then Finish.
 - **Marker** — click to drop a pin.
 - **Text** — click to place. Type to edit. Corner handle resizes. Rotate
-  handle turns it. Color from the list.
+handle turns it. Color from the list.
 - **Edit** — hover or select a finished shape to move it, or drag it by its
-  label. End handles resize
-  lines, arrows, and measures. Vertices resize polygons and rectangles. A
-  diagonal handle resizes circles. A rotate handle turns drawings, rectangles,
-  polygons, and text around their center. Hollow mid-edge handles insert vertices on
-  polygons and paths. Double-click a vertex (or select it and press Delete) to
-  remove it. Click empty map to deselect. Shift-click or ⌘/Ctrl-click to select more than one annotation.
-  With the Select tool, drag a dotted rectangle to select everything inside
-  (Shift-drag adds to the selection). Click Select again, or press Finish /
-  Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
-  the rest. Hover a grouped annotation to see a dotted box around the group.
-  Drag a selected shape, or its label, to move the whole selection. Vertex
-  handles stay hidden while more than one item is selected.
-  ⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
-  redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,
-  Group, Ungroup, and Delete. ⌘D / Ctrl+D duplicates the selection to the
-  right. ⌘C / Ctrl+C copies the selected set; ⌘V / Ctrl+V pastes it at the
-  pointer, keeping relative spacing and group membership.
+label. End handles resize
+lines, arrows, and measures. Vertices resize polygons and rectangles. A
+diagonal handle resizes circles. A rotate handle turns drawings, rectangles,
+polygons, and text around their center. Hollow mid-edge handles insert vertices on
+polygons and paths. Double-click a vertex (or select it and press Delete) to
+remove it. Click empty map to deselect. Shift-click or ⌘/Ctrl-click to select more than one annotation.
+With the Select tool, drag a dotted rectangle to select everything inside
+(Shift-drag adds to the selection). Click Select again, or press Finish /
+Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
+the rest. Hover a grouped annotation to see a dotted box around the group.
+Drag a selected shape, or its label, to move the whole selection. Vertex
+handles stay hidden while more than one item is selected.
+⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
+redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,
+Group, Ungroup, and Delete. ⌘D / Ctrl+D duplicates the selection to the
+right. ⌘C / Ctrl+C copies the selected set; ⌘V / Ctrl+V pastes it at the
+pointer, keeping relative spacing and group membership.
 
 ```tsx
 <Annotate
@@ -548,6 +556,7 @@ enabled, each sample records ground height.
 
 ## Tools
 
+
 | Tool                  | What it does                                                                                                                                              |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Select                | Click to select. Shift/⌘-click for more than one. Drag a dotted box to select several at once.                                                            |
@@ -563,6 +572,7 @@ enabled, each sample records ground height.
 | Text                  | Click to place. Drag to move, corner to resize, rotate handle to turn. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
 | Finish                | Commit the draft (same as Enter).                                                                                                                         |
 
+
 Mapbox and MapLibre query rendered road and building layers — no `trace` prop.
 Google, Leaflet, and ArcGIS need a `trace` callback; see
 [Enable Trace on Google, Leaflet, and ArcGIS](#enable-trace-on-google-leaflet-and-arcgis).
@@ -570,18 +580,21 @@ Google, Leaflet, and ArcGIS need a `trace` callback; see
 
 ## API snapshot
 
-| Export               | Role                                                                            |
-| -------------------- | ------------------------------------------------------------------------------- |
-| `/core`              | Session, hooks, types, utils, toolbar, list — no `Annotate`.                    |
-| `AnnotateProvider`   | Session. Optional `annotations` / `onChange` / `fonts`.                         |
-| `Annotate`           | Map child. Drawing, hover handles, layers.                                      |
-| `AnnotateToolbar`    | Stock icon toolbar — optional.                                                  |
-| `AnnotateList`       | Stock label / color / font / size / delete list — optional.                     |
-| `useAnnotate()`      | Full session: `setTool`, `setLabel`, `setStyle`, `fonts`, …                     |
-| `useAnnotateTools()` | `{ items, finish, canFinish, deleteSelected, undo, redo }`                      |
-| `useAnnotateItems()` | Rows with `isSelected`, `select`, `setLabel`, `setColor`, `setStyle`, `remove`. |
-| `useAnnotateFonts()` | Font catalog from the provider.                                                 |
-| `AnnotateToolIcon`   | Bundled tool SVG.                                                               |
+
+| Export                 | Role                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| `/core`                | Session, hooks, types, utils, toolbar, list — no `Annotate`.                    |
+| `AnnotateProvider`     | Session. Optional `annotations` / `onChange` / `onCommit` / `fonts`.            |
+| `Annotate`             | Map child. Drawing, hover handles, layers.                                      |
+| `AnnotateToolbar`      | Stock icon toolbar — optional.                                                  |
+| `AnnotateList`         | Stock label / color / font / size / delete list — optional.                     |
+| `useAnnotate()`        | Full session: `setTool`, `setLabel`, `setStyle`, `fonts`, …                     |
+| `useAnnotateTools()`   | `{ items, finish, canFinish, deleteSelected, undo, redo }`                      |
+| `useAnnotateItems()`   | Rows with `isSelected`, `select`, `setLabel`, `setColor`, `setStyle`, `remove`. |
+| `useAnnotateFonts()`   | Font catalog from the provider.                                                 |
+| `useLiveAnnotations()` | In-flight geometry during a gesture, one render per frame.                      |
+| `AnnotateToolIcon`     | Bundled tool SVG.                                                               |
+
 
 Types ship with the package: `Annotation`, `AnnotateTool`, `AnnotateSession`,
 and the rest.
@@ -590,6 +603,7 @@ and the rest.
 
 CI runs `npm run check` (typecheck, lint, Prettier, Vitest) on Node 20 and 22.
 Tests are jsdom unit tests, not live map tiles.
+
 
 | Package                     | Peer floor | Tested in this repo |
 | --------------------------- | ---------- | ------------------- |
@@ -602,6 +616,7 @@ Tests are jsdom unit tests, not live map tiles.
 | `react-leaflet`             | ≥ 4        | 5.0                 |
 | `@arcgis/core`              | ≥ 4.28     | peer only           |
 
+
 React 18 and react-leaflet 4 stay in range. ArcGIS is an optional peer and is
 not installed in the default CI graph.
 
@@ -611,7 +626,7 @@ not installed in the default CI graph.
 - [Code of conduct](./CODE_OF_CONDUCT.md)
 - [Changelog](./CHANGELOG.md) · [Releases](https://github.com/orange-groove/react-map-annotate/releases)
 - [Bug report](https://github.com/orange-groove/react-map-annotate/issues/new?template=bug.yml) ·
-  [Feature request](https://github.com/orange-groove/react-map-annotate/issues/new?template=feature.yml)
+[Feature request](https://github.com/orange-groove/react-map-annotate/issues/new?template=feature.yml)
 
 ## License
 
