@@ -3,6 +3,13 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.18
+
+- The rotate handle no longer sits on the corner handle. It was placed 22px
+  past the top-right corner while every handle grabs within 20px of itself, so
+  on a rectangle it covered the corner you resize from. It now clears the
+  corner by a whole hit box.
+
 ## 0.3.17
 
 Remapping hosts persist with `onCommit` only. Keeping annotations in your own
@@ -25,10 +32,6 @@ change now.
 - Order is no longer geometry. A host merge that hands the same shapes back in a
   different order counts as being in step, so the provider stops holding the
   line and undo history survives.
-- The rotate handle no longer sits on the corner handle. It was placed 22px
-  past the top-right corner while every handle grabs within 20px of itself, so
-  on a rectangle it covered the corner you resize from. It now clears the
-  corner by a whole hit box.
 
 ## 0.3.16
 
