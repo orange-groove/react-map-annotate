@@ -166,8 +166,13 @@ export function AnnotateChrome({
                   ? [0, 0]
                   : [0, -8]
             }
+            annotations={annotations}
+            selectedIds={selectedIds ?? []}
             onSelect={onSelect}
             onLabelChange={onLabelChange}
+            onUpdate={onUpdate}
+            onUpdateMany={session?.onUpdateMany}
+            onDragEnd={onHandleDragEnd}
             render={renderLabel}
           />
         );

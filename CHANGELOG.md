@@ -3,6 +3,15 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.16
+
+- Labels drag their annotation. A label was a caption you could only click,
+  even though it has always been styled with a grab cursor; grabbing one now
+  moves the shape it names, including every other selected annotation. Custom
+  labels from `renderLabel` drag too.
+- A label only becomes a drag once the pointer has travelled a few pixels, so
+  click-to-select and double-click-to-rename are untouched.
+
 ## 0.3.15
 
 - Controlled mode no longer needs the host to echo the same array back. A host

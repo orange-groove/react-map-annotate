@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { TestMapGl } from "../test/map-gl";
-import type { Annotation } from "../core/types";
+import { MapGlProvider } from "../engines/kit/context";
+import type { GlKit } from "../engines/kit/types";
+import { TestMapGl, testMapGl } from "../test/map-gl";
+import type { Annotation, PathAnnotation } from "../core/types";
 import { destination, rectangleRing } from "../core/utils/geo";
 import { AnnotationLabel } from "./annotation-label";
 
@@ -218,5 +220,152 @@ describe("AnnotationLabel", () => {
     fireEvent.click(label, { shiftKey: true });
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledWith("line-1", { additive: true });
+  });
+});
+
+const other: Annotation = {
+  id: "line-2",
+  kind: "line",
+  label: "Path",
+  coordinates: [
+    [4, 4],
+    [5, 5],
+  ],
+};
+
+/** A kit with a real map behind it, so the label can drag. */
+function draggableMapGl() {
+  const dragPan = {
+    enabled: true,
+    enable: vi.fn(),
+    disable: vi.fn(),
+    isEnabled: () => dragPan.enabled,
+  };
+  const map = {
+    dragPan,
+    getCanvas: () =>
+      ({
+        getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      }) as HTMLElement,
+    unproject: ([x, y]: [number, number]) => ({ lng: x / 100, lat: y / 100 }),
+  };
+  return {
+    ...testMapGl,
+    useMap: () => ({ current: { getMap: () => map } }),
+  } as unknown as GlKit;
+}
+
+function endOf(item: Annotation) {
+  return (item as PathAnnotation).coordinates[1];
+}
+
+describe("dragging an annotation by its label", () => {
+  function renderDraggable(
+    props: Partial<React.ComponentProps<typeof AnnotationLabel>> = {},
+  ) {
+    const onUpdate = vi.fn();
+    const onUpdateMany = vi.fn();
+    const onSelect = vi.fn();
+    const onDragEnd = vi.fn();
+    render(
+      <MapGlProvider value={draggableMapGl()}>
+        <AnnotationLabel
+          annotation={annotation}
+          longitude={0.5}
+          latitude={0.5}
+          selected={false}
+          editable
+          onSelect={onSelect}
+          onUpdate={onUpdate}
+          onUpdateMany={onUpdateMany}
+          onDragEnd={onDragEnd}
+          {...props}
+        />
+      </MapGlProvider>,
+    );
+    return {
+      label: document.querySelector("[data-rma-label]")!,
+      onUpdate,
+      onUpdateMany,
+      onSelect,
+      onDragEnd,
+    };
+  }
+
+  it("moves the annotation with the pointer", () => {
+    const { label, onUpdate, onDragEnd } = renderDraggable();
+
+    fireEvent.pointerDown(label, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 50, clientY: 20, pointerId: 1 });
+
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    const moved = onUpdate.mock.calls[0]?.[0] as Annotation;
+    expect(moved.id).toBe("line-1");
+    expect(endOf(moved)).toEqual([1.5, 1.2]);
+
+    fireEvent.pointerUp(window, { clientX: 50, clientY: 20, pointerId: 1 });
+    expect(onDragEnd).toHaveBeenCalledWith("line-1");
+  });
+
+  it("selects on pointer-down without moving anything", () => {
+    const { label, onSelect, onUpdate, onDragEnd } = renderDraggable();
+
+    fireEvent.pointerDown(label, { clientX: 0, clientY: 0, pointerId: 1 });
+    expect(onSelect).toHaveBeenCalledWith("line-1");
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    // A click wanders a pixel. That is not a drag.
+    fireEvent.pointerMove(window, { clientX: 1, clientY: 1, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 1, clientY: 1, pointerId: 1 });
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(onDragEnd).not.toHaveBeenCalled();
+  });
+
+  it("still renames on double-click", () => {
+    const { label } = renderDraggable();
+
+    fireEvent.pointerDown(label, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.doubleClick(label);
+
+    expect(screen.getByLabelText("Annotation label")).toBeTruthy();
+  });
+
+  it("does not drag while the label is being renamed", () => {
+    const { label, onUpdate } = renderDraggable();
+
+    fireEvent.doubleClick(label);
+    const input = screen.getByLabelText("Annotation label");
+    fireEvent.pointerDown(input, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 60, clientY: 0, pointerId: 1 });
+
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("takes the rest of the selection along", () => {
+    const { label, onUpdate, onUpdateMany } = renderDraggable({
+      annotations: [annotation, other],
+      selectedIds: ["line-1", "line-2"],
+    });
+
+    fireEvent.pointerDown(label, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 50, clientY: 0, pointerId: 1 });
+
+    expect(onUpdate).not.toHaveBeenCalled();
+    const moved = onUpdateMany.mock.calls[0]?.[0] as Annotation[];
+    expect(moved.map((item) => item.id)).toEqual(["line-1", "line-2"]);
+    expect(endOf(moved[0]!)).toEqual([1.5, 1]);
+    expect(endOf(moved[1]!)).toEqual([5.5, 5]);
+  });
+
+  it("drags a custom rendered label too", () => {
+    const { label, onUpdate } = renderDraggable({
+      render: () => <span>Custom</span>,
+    });
+
+    fireEvent.pointerDown(label, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 40, clientY: 0, pointerId: 1 });
+
+    expect(onUpdate).toHaveBeenCalledTimes(1);
   });
 });

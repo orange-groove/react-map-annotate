@@ -497,7 +497,8 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 - **Marker** — click to drop a pin.
 - **Text** — click to place. Type to edit. Corner handle resizes. Rotate
   handle turns it. Color from the list.
-- **Edit** — hover or select a finished shape to move it. End handles resize
+- **Edit** — hover or select a finished shape to move it, or drag it by its
+  label. End handles resize
   lines, arrows, and measures. Vertices resize polygons and rectangles. A
   diagonal handle resizes circles. A rotate handle turns drawings, rectangles,
   polygons, and text around their center. Hollow mid-edge handles insert vertices on
@@ -507,8 +508,8 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
   (Shift-drag adds to the selection). Click Select again, or press Finish /
   Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
   the rest. Hover a grouped annotation to see a dotted box around the group.
-  Drag a selected shape to move the whole selection. Vertex handles
-  stay hidden while more than one item is selected.
+  Drag a selected shape, or its label, to move the whole selection. Vertex
+  handles stay hidden while more than one item is selected.
   ⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
   redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,
   Group, Ungroup, and Delete. ⌘D / Ctrl+D duplicates the selection to the

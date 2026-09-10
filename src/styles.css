@@ -148,6 +148,8 @@ gmp-advanced-marker {
   transform: translateY(-6px);
   pointer-events: auto;
   cursor: grab;
+  /* The label drags its annotation, so the browser must not pan or scroll. */
+  touch-action: none;
 }
 
 .rma-label--centered {
@@ -184,6 +186,7 @@ gmp-advanced-marker {
 html.rma-dragging,
 html.rma-dragging * {
   cursor: var(--rma-pointer-cursor, grabbing) !important;
+  user-select: none;
 }
 
 .rma-crosshair,

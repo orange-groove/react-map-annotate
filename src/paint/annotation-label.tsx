@@ -9,7 +9,17 @@ import type {
 } from "../core/types";
 import { isAdditiveSelect } from "../core/utils/selection";
 import { annotationAreaMeters } from "../core/utils/annotations";
+import { moveAnnotation } from "../core/utils/edit";
 import { formatArea } from "../core/utils/geo";
+import { startHandleDrag } from "../interaction/pointer-drag";
+import { useOptionalAnnotate } from "../session/annotate-context";
+
+/**
+ * A label is a handle on its annotation, not just a caption. The pointer has
+ * to travel this far before we treat it as a drag, so a click still selects
+ * and a double-click still renames.
+ */
+const LABEL_DRAG_THRESHOLD_PX = 3;
 
 export function AnnotationLabel({
   annotation,
@@ -21,8 +31,13 @@ export function AnnotationLabel({
   markerAnchor = "bottom",
   showLabel = true,
   showArea = true,
+  annotations = [],
+  selectedIds = [],
   onSelect,
   onLabelChange,
+  onUpdate,
+  onUpdateMany,
+  onDragEnd,
   render,
 }: {
   annotation: Annotation;
@@ -34,11 +49,18 @@ export function AnnotationLabel({
   markerAnchor?: "center" | "bottom";
   showLabel?: boolean;
   showArea?: boolean;
+  annotations?: Annotation[];
+  selectedIds?: string[];
   onSelect?: (id: string, options?: SelectOptions) => void;
   onLabelChange?: (id: string, label: string, annotation: Annotation) => void;
+  onUpdate?: (annotation: Annotation) => void;
+  onUpdateMany?: (annotations: Annotation[]) => void;
+  onDragEnd?: (id: string) => void;
   render?: (props: LabelRenderProps) => React.ReactNode;
 }) {
-  const { Marker } = useMapGl();
+  const { Marker, useMap } = useMapGl();
+  const maps = useMap();
+  const session = useOptionalAnnotate();
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState(annotation.label);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -57,6 +79,41 @@ export function AnnotationLabel({
     if (next !== annotation.label) {
       onLabelChange?.(annotation.id, next, { ...annotation, label: next });
     }
+  }
+
+  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    if (isAdditiveSelect(event)) {
+      onSelect?.(annotation.id, { additive: true });
+      return;
+    }
+    onSelect?.(annotation.id);
+    if (editing || !onUpdate) return;
+    const map = maps.current?.getMap();
+    if (!map) return;
+    // Whatever is selected when the drag starts travels with it.
+    const moving =
+      selectedIds.includes(annotation.id) && selectedIds.length > 1
+        ? annotations.filter((item) => selectedIds.includes(item.id))
+        : [annotation];
+    startHandleDrag(
+      event,
+      map,
+      [longitude, latitude],
+      (point, grab) => {
+        const moved = moving.map((item) =>
+          moveAnnotation(item, grab.from, point, { preview: true }),
+        );
+        if (moved.length > 1 && onUpdateMany) onUpdateMany(moved);
+        else if (moved[0]) onUpdate(moved[0]);
+      },
+      () => onDragEnd?.(annotation.id),
+      "grabbing",
+      {
+        thresholdPx: LABEL_DRAG_THRESHOLD_PX,
+        onDragStart: () => session?.beginEdit(),
+      },
+    );
   }
 
   const areaMeters = annotationAreaMeters(annotation);
@@ -101,31 +158,14 @@ export function AnnotationLabel({
       style={{ zIndex: selected ? 2 : 1 }}
     >
       {render ? (
-        <div
-          data-rma-label={annotation.id}
-          onPointerDown={(event) => {
-            event.stopPropagation();
-            if (isAdditiveSelect(event)) {
-              onSelect?.(annotation.id, { additive: true });
-            } else {
-              onSelect?.(annotation.id);
-            }
-          }}
-        >
+        <div data-rma-label={annotation.id} onPointerDown={onPointerDown}>
           {custom}
         </div>
       ) : (
         <div
           data-rma-label={annotation.id}
           className={labelClassName}
-          onPointerDown={(event) => {
-            event.stopPropagation();
-            if (isAdditiveSelect(event)) {
-              onSelect?.(annotation.id, { additive: true });
-            } else {
-              onSelect?.(annotation.id);
-            }
-          }}
+          onPointerDown={onPointerDown}
           onDoubleClick={(event) => {
             event.stopPropagation();
             event.preventDefault();
