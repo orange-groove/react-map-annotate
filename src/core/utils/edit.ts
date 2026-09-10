@@ -42,8 +42,12 @@ export interface EditHandleHit {
   index: number;
 }
 
-const ROTATE_HANDLE_OFFSET_PX = 22;
-const ROTATE_HANDLE_OFFSET_M = 18;
+// Far enough past the corner that the rotate handle does not cover the corner
+// handle sitting there. Every handle grabs within `HANDLE_HIT_PX` of itself, so
+// on the diagonal of a corner the two only clear each other beyond
+// `HANDLE_HIT_PX * Math.SQRT2`.
+const ROTATE_HANDLE_OFFSET_PX = HANDLE_HIT_PX * 2;
+const ROTATE_HANDLE_OFFSET_M = 32;
 
 export type TerrainEditOptions = {
   map?: TerrainMap | null;

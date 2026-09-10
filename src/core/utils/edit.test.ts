@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HANDLE_HIT_PX } from "../constants";
 import type {
   AreaAnnotation,
   MarkerAnnotation,
@@ -503,6 +504,24 @@ describe("rotate", () => {
     expect(
       editHandlesFor(note).some((handle) => handle.kind === "rotate"),
     ).toBe(true);
+  });
+
+  it("keeps the rotate handle clear of the corner handle", () => {
+    // A metre to a pixel at this latitude, so screen distance reads in metres.
+    const scale = 111320;
+    const project = ({ lng, lat }: { lng: number; lat: number }) => ({
+      x: lng * scale * Math.cos((lat * Math.PI) / 180),
+      y: -lat * scale,
+    });
+    const corner = rectangle.coordinates[2]!;
+    const handle = rotateHandleFor(rectangle, project)!;
+    const from = project({ lng: corner[0], lat: corner[1] });
+    const to = project({ lng: handle[0], lat: handle[1] });
+    const gap = Math.hypot(to.x - from.x, to.y - from.y);
+    // Both grab within HANDLE_HIT_PX of themselves, and a corner puts them on
+    // a diagonal, so anything closer than this and the rotate handle is over
+    // the corner handle rather than outside it.
+    expect(gap).toBeGreaterThan(HANDLE_HIT_PX * Math.SQRT2);
   });
 
   it("places the rotate handle beyond the top-right corner", () => {
