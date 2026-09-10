@@ -1,4 +1,9 @@
-import type { AnnotateFont, AnnotateTool, AnnotationKind } from "./types";
+import type {
+  AnnotateFont,
+  AnnotateTool,
+  AnnotationKind,
+  DrawMode,
+} from "./types";
 
 export const LAYER_PREFIX = "rma";
 
@@ -85,15 +90,23 @@ export const DRAW_TOOLS: AnnotateTool[] = [
   "text",
 ];
 
-export const CLICK_VERTEX_TOOLS: AnnotationKind[] = [
+/**
+ * Two-point shapes. `drawMode` decides whether their two points come from two
+ * clicks or from one press-drag-release.
+ */
+export const DUAL_GESTURE_TOOLS: DualGestureTool[] = [
   "line",
   "arrow",
   "bidirectional-arrow",
-  "polygon",
+  "circle",
+  "rectangle",
   "measure",
 ];
 
-export const DRAG_TOOLS: AnnotationKind[] = ["draw", "circle", "rectangle"];
+export type DualGestureTool =
+  "line" | "arrow" | "bidirectional-arrow" | "circle" | "rectangle" | "measure";
+
+export const DEFAULT_DRAW_MODE: DrawMode = "click";
 
 export const DEFAULT_TOOLBAR_TOOLS: AnnotateTool[] = [
   "select",
@@ -181,16 +194,26 @@ export function toggleAnnotateTool(
   return current === next ? IDLE_TOOL : next;
 }
 
-export function isDragTool(
-  tool: AnnotateTool,
-): tool is (typeof DRAG_TOOLS)[number] {
-  return (DRAG_TOOLS as readonly AnnotateTool[]).includes(tool);
+export function isDualGestureTool(tool: AnnotateTool): tool is DualGestureTool {
+  return (DUAL_GESTURE_TOOLS as readonly AnnotateTool[]).includes(tool);
 }
 
+/** Freehand is always a drag. The two-point shapes are only in `drag` mode. */
+export function isDragTool(
+  tool: AnnotateTool,
+  drawMode: DrawMode = DEFAULT_DRAW_MODE,
+): tool is "draw" | DualGestureTool {
+  if (tool === "draw") return true;
+  return drawMode === "drag" && isDualGestureTool(tool);
+}
+
+/** Polygon always takes a click per vertex. The two-point shapes in `click`. */
 export function isClickVertexTool(
   tool: AnnotateTool,
-): tool is (typeof CLICK_VERTEX_TOOLS)[number] {
-  return (CLICK_VERTEX_TOOLS as readonly AnnotateTool[]).includes(tool);
+  drawMode: DrawMode = DEFAULT_DRAW_MODE,
+): tool is "polygon" | DualGestureTool {
+  if (tool === "polygon") return true;
+  return drawMode === "click" && isDualGestureTool(tool);
 }
 
 export function isPointTool(

@@ -21,10 +21,11 @@ import type {
   ChangeCause,
   ChangeMeta,
   DraftAnnotation,
+  DrawMode,
   SelectOptions,
   TraceOption,
 } from "../core/types";
-import { IDLE_TOOL } from "../core/constants";
+import { DEFAULT_DRAW_MODE, IDLE_TOOL } from "../core/constants";
 import {
   canPressFinish,
   removeAnnotation,
@@ -116,6 +117,8 @@ export interface AnnotateSession {
   canUngroup: boolean;
   showLabels: boolean;
   showArea: boolean;
+  /** How two-point shapes are drawn: two clicks, or one press-drag-release. */
+  drawMode: DrawMode;
   trace?: TraceOption;
 }
 
@@ -142,6 +145,12 @@ export interface AnnotateProviderProps extends AnnotateCallbacks {
   defaultFontFamily?: string;
   showLabels?: boolean;
   showArea?: boolean;
+  /**
+   * How circles, rectangles, lines, arrows, and measures are drawn. `"click"`
+   * (the default) places the first point on one click and finishes on the
+   * second. `"drag"` takes the whole shape from one press-drag-release.
+   */
+  drawMode?: DrawMode;
   trace?: TraceOption;
 }
 
@@ -172,6 +181,7 @@ export function AnnotateProvider({
   defaultFontFamily,
   showLabels = true,
   showArea = true,
+  drawMode = DEFAULT_DRAW_MODE,
   trace,
 }: AnnotateProviderProps) {
   const [annotationsState, setAnnotationsState] = useState<Annotation[]>(
@@ -794,6 +804,7 @@ export function AnnotateProvider({
       canUngroup: canUngroupAnnotations(annotations, selectedIds),
       showLabels,
       showArea,
+      drawMode,
       trace,
     }),
     [
@@ -802,6 +813,7 @@ export function AnnotateProvider({
       canRedo,
       canUndo,
       draft,
+      drawMode,
       endEdit,
       finish,
       fonts,

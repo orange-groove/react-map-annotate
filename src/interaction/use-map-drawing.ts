@@ -12,6 +12,7 @@ import type {
   AnnotateTool,
   Annotation,
   DraftAnnotation,
+  DrawMode,
   LngLat,
   SelectOptions,
   TraceHit,
@@ -73,6 +74,7 @@ export interface MapDrawingLatest {
   selectedIds?: string[];
   defaultColor: string;
   defaultFontFamily?: string;
+  drawMode: DrawMode;
   sampleIntervalMeters: number;
   onAdd?: (annotation: Annotation) => void;
   onAddMany?: (annotations: Annotation[]) => void;
@@ -352,6 +354,7 @@ export function useMapDrawing({
           tool: activeTool,
           draft: current,
           annotations: items,
+          drawMode,
         } = latestRef.current;
         const hitId = current ? null : hitAnnotationId(map, event.point, items);
         const handleTarget = current
@@ -447,7 +450,9 @@ export function useMapDrawing({
           setMapCursor(map, "crosshair");
           return;
         }
-        if (!isDrawingTool(activeTool) || !isDragTool(activeTool)) return;
+        if (!isDrawingTool(activeTool) || !isDragTool(activeTool, drawMode)) {
+          return;
+        }
         dragRef.current = true;
         const start = eventLngLat(event);
         pushDraft({
@@ -542,16 +547,9 @@ export function useMapDrawing({
           return;
         }
 
-        if (
-          (activeTool === "circle" || activeTool === "rectangle") &&
-          current
-        ) {
-          latestRef.current.onDraftChange?.({ ...current, cursor: point });
-          return;
-        }
-
-        if (isClickVertexTool(activeTool)) {
-          if (!current) return;
+        // Every other shape runs from its start point to the cursor, whether
+        // the gap between the two is a held button or two clicks.
+        if (current) {
           latestRef.current.onDraftChange?.({ ...current, cursor: point });
         }
       };
@@ -608,8 +606,12 @@ export function useMapDrawing({
         }
         if (!dragRef.current) return;
         dragRef.current = false;
-        const { tool: activeTool, draft: current } = latestRef.current;
-        if (!current || !isDragTool(activeTool)) return;
+        const {
+          tool: activeTool,
+          draft: current,
+          drawMode,
+        } = latestRef.current;
+        if (!current || !isDragTool(activeTool, drawMode)) return;
         const next: DraftAnnotation = {
           ...current,
           cursor: eventLngLat(event),
@@ -637,6 +639,7 @@ export function useMapDrawing({
           tool: activeTool,
           draft: current,
           annotations: items,
+          drawMode,
         } = latestRef.current;
         const point = eventLngLat(event);
         if (isTraceTool(activeTool)) {
@@ -706,7 +709,7 @@ export function useMapDrawing({
           return;
         }
 
-        if (!isClickVertexTool(activeTool)) return;
+        if (!isClickVertexTool(activeTool, drawMode)) return;
 
         if (!current) {
           latestRef.current.onDraftChange?.({
@@ -744,8 +747,12 @@ export function useMapDrawing({
       };
 
       const onDblClick = (event: MapPointerEvent) => {
-        const { tool: activeTool, draft: current } = latestRef.current;
-        if (current && isClickVertexTool(activeTool)) {
+        const {
+          tool: activeTool,
+          draft: current,
+          drawMode,
+        } = latestRef.current;
+        if (current && isClickVertexTool(activeTool, drawMode)) {
           event.preventDefault();
           const coordinates = current.coordinates.slice();
           if (

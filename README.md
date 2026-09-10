@@ -24,7 +24,6 @@ the session yourself.
 import "@orange-groove/react-map-annotate/styles.css";
 ```
 
-
 | Map      | Also install                                          |
 | -------- | ----------------------------------------------------- |
 | Mapbox   | `react-map-gl` ≥ 8, `mapbox-gl` ≥ 3                   |
@@ -32,7 +31,6 @@ import "@orange-groove/react-map-annotate/styles.css";
 | Google   | `@vis.gl/react-google-maps` ≥ 1                       |
 | Leaflet  | `leaflet` ≥ 1.9, `react-leaflet` ≥ 4 (v5 on React 19) |
 | ArcGIS   | `@arcgis/core` ≥ 4.28                                 |
-
 
 ## Quick start
 
@@ -105,7 +103,7 @@ import {
 
 Those two components are example consumers of `useAnnotateTools()` and
 `useAnnotateItems()`. Replace them when your design system shows up. Full
-samples: `[examples/](./examples)`.
+samples: [examples/](./examples).
 
 ## Compare
 
@@ -117,7 +115,6 @@ control without a React session, or when you need OpenLayers.
 This library is for when the drawing session itself is React state: the same
 `Annotation[]` your toolbar, list, and database already speak.
 
-
 |                       | This library                                                                 | Terra Draw                                                                                             | Mapbox GL Draw                                                | Leaflet.Draw                        | Google Drawing Manager                      |
 | --------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
 | React state ownership | `Annotation[]` on the provider. `onCommit` is the write path.                | Internal GeoJSON store. Snapshot it (`getSnapshot`) and subscribe to change events to sync into React. | Draw's feature store (`getAll` / `set`). Sync out via events. | Layers on the map.                  | Overlay objects on the map.                 |
@@ -125,7 +122,6 @@ This library is for when the drawing session itself is React state: the same
 | Supported engines     | Mapbox, MapLibre, Google, Leaflet, ArcGIS                                    | Mapbox, MapLibre, Google, Leaflet, OpenLayers                                                          | Mapbox (MapLibre via community ports)                         | Leaflet                             | Google Maps                                 |
 | Built-in editing      | Move, vertex drag, rotate, mid-edge insert, vertex delete, undo / redo       | Select mode (drag, scale, rotate) plus undo / redo                                                     | `simple_select` / `direct_select`                             | Edit / delete handlers              | Limited after the shape is placed           |
 | Measurement           | Geodesic path, 10 m samples, optional terrain elevation                      | Not built in. Measure from the GeoJSON you already have.                                               | Not built in.                                                 | Not built in.                       | Not built in.                               |
-
 
 Engine-locked managers (Mapbox GL Draw, Leaflet.Draw, Google Drawing Manager)
 are the right tool when you want their control on that one map. They were not
@@ -144,9 +140,40 @@ finish();
 ```
 
 For a row of buttons with undo, redo, and icons, use `useAnnotateTools()` —
-see `[examples/custom-toolbar.tsx](./examples/custom-toolbar.tsx)`. For a
+see [examples/custom-toolbar.tsx](./examples/custom-toolbar.tsx). For a
 sidebar that names, recolors, and deletes rows, see
-`[examples/custom-list.tsx](./examples/custom-list.tsx)`.
+[examples/custom-list.tsx](./examples/custom-list.tsx).
+
+### Click twice, or press and drag
+
+Circles, rectangles, lines, arrows, and measures all take two points. `drawMode`
+decides how you give them:
+
+```tsx
+<AnnotateProvider drawMode="drag">
+```
+
+| `drawMode`          | The gesture                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `"click"` (default) | Click the first point, move, click again to finish.              |
+| `"drag"`            | Press at the first point, drag, release at the second to finish. |
+
+Two clicks are the default because they survive a shaky hand, a trackpad, and a
+touch screen, and because the shape follows the cursor between the clicks so you
+can see what you are about to commit. Pick `"drag"` when your users come from a
+desktop drawing tool and expect to hold the button down.
+
+The gesture is all that changes. The same `Annotation[]` comes out either way,
+and the tools that only have one honest gesture keep it: freehand is always a
+drag, polygon is always a click per vertex, and marker, text, and trace are
+always a single click.
+
+`drawMode` also takes a per-map override on `Annotate`, for a session that
+drives two maps:
+
+```tsx
+<Annotate drawMode="drag" />
+```
 
 ### A drag does not go through your state
 
@@ -258,7 +285,7 @@ on the way in, drop `onChange` and set state from `onCommit` alone — see
 
 Granular `onAdd` / `onDelete` / `onLabelChange` / `onColorChange` are there
 when you need an audit trail. Full file:
-`[examples/persist.tsx](./examples/persist.tsx)`.
+[examples/persist.tsx](./examples/persist.tsx).
 
 ### Use with Zustand
 
@@ -283,7 +310,7 @@ const setAnnotations = useAnnotations((state) => state.setAnnotations);
 <AnnotateProvider annotations={annotations} onChange={setAnnotations}>
 ```
 
-`[examples/zustand.tsx](./examples/zustand.tsx)`. Redux, Jotai, and
+[examples/zustand.tsx](./examples/zustand.tsx). Redux, Jotai, and
 `localStorage` follow the same two props.
 
 ### Switch from Mapbox to MapLibre
@@ -304,17 +331,15 @@ import "maplibre-gl/dist/maplibre-gl.css";
 </Map>;
 ```
 
-`[examples/maplibre.tsx](./examples/maplibre.tsx)`. Other engines:
+[examples/maplibre.tsx](./examples/maplibre.tsx). Other engines:
 
-
-| Engine   | `Annotate` import                                | Example                                            |
-| -------- | ------------------------------------------------ | -------------------------------------------------- |
-| Mapbox   | `@orange-groove/react-map-annotate` or `/mapbox` | `[examples/mapbox.tsx](./examples/mapbox.tsx)`     |
-| MapLibre | `/maplibre`                                      | `[examples/maplibre.tsx](./examples/maplibre.tsx)` |
-| Google   | `/google`                                        | `[examples/google.tsx](./examples/google.tsx)`     |
-| Leaflet  | `/leaflet`                                       | `[examples/leaflet.tsx](./examples/leaflet.tsx)`   |
-| ArcGIS   | `/arcgis`                                        | `[examples/arcgis.tsx](./examples/arcgis.tsx)`     |
-
+| Engine   | `Annotate` import                                | Example                                          |
+| -------- | ------------------------------------------------ | ------------------------------------------------ |
+| Mapbox   | `@orange-groove/react-map-annotate` or `/mapbox` | [examples/mapbox.tsx](./examples/mapbox.tsx)     |
+| MapLibre | `/maplibre`                                      | [examples/maplibre.tsx](./examples/maplibre.tsx) |
+| Google   | `/google`                                        | [examples/google.tsx](./examples/google.tsx)     |
+| Leaflet  | `/leaflet`                                       | [examples/leaflet.tsx](./examples/leaflet.tsx)   |
+| ArcGIS   | `/arcgis`                                        | [examples/arcgis.tsx](./examples/arcgis.tsx)     |
 
 Session imports stay on `/core`. Engine entries still re-export the session so
 existing `/mapbox` (and root) imports keep working.
@@ -345,9 +370,16 @@ const { setTool, finish, canFinish } = useAnnotate();
 </Map>
 ```
 
-Two clicks complete a measure. The saved annotation includes geodesic
-`distanceMeters` and, with terrain enabled, elevation samples along the path.
-`[examples/measure.tsx](./examples/measure.tsx)`.
+Two clicks complete a measure, or one press-drag-release under
+`drawMode="drag"`. The distance reads out at the head of the path the whole
+time, so you can stretch the line to the number you want before committing it.
+That live figure is geodesic from the vertices; the elevation samples are the
+one part that waits for the commit, because sampling terrain per frame is what
+makes a drag stutter.
+
+The saved annotation carries `distanceMeters`, the samples when terrain is
+enabled, and the same formatted string on `caption`.
+[examples/measure.tsx](./examples/measure.tsx).
 
 ### Enable Trace on Google, Leaflet, and ArcGIS
 
@@ -414,7 +446,6 @@ so a sidebar can show "Measurement 3" while the map shows `1.2 km`.
 
 ## Styling strokes and fills
 
-
 | Field              | What it does                                            |
 | ------------------ | ------------------------------------------------------- |
 | `color`            | Stroke and fill color.                                  |
@@ -422,7 +453,6 @@ so a sidebar can show "Measurement 3" while the map shows `1.2 km`.
 | `strokeOpacity`    | Stroke alpha. Defaults to 0.95.                         |
 | `fillOpacity`      | Resting fill alpha for areas. Defaults to 0.            |
 | `hoverFillOpacity` | Fill alpha on hover. Defaults to `fillOpacity` or 0.18. |
-
 
 Keep `color` to `#RRGGBB` or a CSS color. Mapbox and MapLibre read the color
 from a data property, and 8-digit `#RRGGBBAA` is not valid there — the shaft
@@ -500,41 +530,46 @@ item.setStyle({ fontFamily: fonts[1]?.family });
 Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
 
 - **Select** — click an annotation to select it. Shift-click or ⌘/Ctrl-click
-adds or removes. Drag an empty area to draw a dotted box; everything inside
-is selected. Hold Shift while dragging the box to add to the selection.
+  adds or removes. Drag an empty area to draw a dotted box; everything inside
+  is selected. Hold Shift while dragging the box to add to the selection.
 - **Trace** — hover a road or building outline to highlight it. Click to
-keep that feature. Move the finished shape by its bounds box; it has no
-vertex handles.
-- **Freehand, circle, rectangle** — complete on mouse up.
-- **Line, arrow, bidirectional arrow, measure** — complete on the second click.
+  keep that feature. Move the finished shape by its bounds box; it has no
+  vertex handles.
+- **Circle, rectangle, line, arrow, bidirectional arrow, measure** — click to
+  place the first point, click again to finish. Set `drawMode="drag"` to take
+  the whole shape from one press-drag-release instead.
+- **Freehand** — sketch with the button held; completes on mouse up.
+- **Measure** — the distance so far reads out at the head of the path from the
+  first point on, not only once the shape is finished.
 - **Polygon** — click vertices, then Finish.
 - **Marker** — click to drop a pin.
 - **Text** — click to place. Type to edit. Corner handle resizes. Rotate
-handle turns it. Color from the list.
+  handle turns it. Color from the list.
 - **Edit** — hover or select a finished shape to move it, or drag it by its
-label. End handles resize
-lines, arrows, and measures. Vertices resize polygons and rectangles. A
-diagonal handle resizes circles. A rotate handle turns drawings, rectangles,
-polygons, and text around their center. Hollow mid-edge handles insert vertices on
-polygons and paths. Double-click a vertex (or select it and press Delete) to
-remove it. Click empty map to deselect. Shift-click or ⌘/Ctrl-click to select more than one annotation.
-With the Select tool, drag a dotted rectangle to select everything inside
-(Shift-drag adds to the selection). Click Select again, or press Finish /
-Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
-the rest. Hover a grouped annotation to see a dotted box around the group.
-Drag a selected shape, or its label, to move the whole selection. Vertex
-handles stay hidden while more than one item is selected.
-⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
-redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,
-Group, Ungroup, and Delete. ⌘D / Ctrl+D duplicates the selection to the
-right. ⌘C / Ctrl+C copies the selected set; ⌘V / Ctrl+V pastes it at the
-pointer, keeping relative spacing and group membership.
+  label. End handles resize
+  lines, arrows, and measures. Vertices resize polygons and rectangles. A
+  diagonal handle resizes circles. A rotate handle turns drawings, rectangles,
+  polygons, and text around their center. Hollow mid-edge handles insert vertices on
+  polygons and paths. Double-click a vertex (or select it and press Delete) to
+  remove it. Click empty map to deselect. Shift-click or ⌘/Ctrl-click to select more than one annotation.
+  With the Select tool, drag a dotted rectangle to select everything inside
+  (Shift-drag adds to the selection). Click Select again, or press Finish /
+  Enter / Escape, to return to pan so the map can move. Selecting one member of a group selects
+  the rest. Hover a grouped annotation to see a dotted box around the group.
+  Drag a selected shape, or its label, to move the whole selection. Vertex
+  handles stay hidden while more than one item is selected.
+  ⌘G / Ctrl+G groups the selection; ⇧⌘G / Ctrl+Shift+G ungroups it. Undo /
+  redo from the toolbar or ⌘Z / ⇧⌘Z. Right-click opens Duplicate, Copy, Paste,
+  Group, Ungroup, and Delete. ⌘D / Ctrl+D duplicates the selection to the
+  right. ⌘C / Ctrl+C copies the selected set; ⌘V / Ctrl+V pastes it at the
+  pointer, keeping relative spacing and group membership.
 
 ```tsx
 <Annotate
   enableTerrain
   defaultColor="#2563eb"
   defaultStrokeWidth={3}
+  drawMode="click"
   sampleIntervalMeters={10}
   renderArrowHead={({ bearing, color, size }) => (
     <svg width={size} height={size} viewBox="0 0 24 24">
@@ -556,22 +591,20 @@ enabled, each sample records ground height.
 
 ## Tools
 
-
 | Tool                  | What it does                                                                                                                                              |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Select                | Click to select. Shift/⌘-click for more than one. Drag a dotted box to select several at once.                                                            |
 | Freehand              | Sketch a path. Hover for a bounds box; drag to move. Corner handle resizes; rotate handle turns it.                                                       |
 | Trace                 | Hover a rendered road or building outline, click to adopt it. No freehand, no per-vertex handles.                                                         |
-| Line                  | Two-click segment. Hover ends to resize.                                                                                                                  |
+| Line                  | Two points. Hover ends to resize.                                                                                                                         |
 | Arrow / bidirectional | Line plus SVG heads. Size from the list, or `setStyle({ strokeWidth })` — widens the shaft and the heads.                                                 |
-| Circle                | Drag to create. Hover for a resize handle.                                                                                                                |
-| Rectangle             | Drag to create. Hover vertices to resize, rotate handle to turn.                                                                                          |
+| Circle                | Center, then radius. Hover for a resize handle.                                                                                                           |
+| Rectangle             | Two opposite corners. Hover vertices to resize, rotate handle to turn.                                                                                    |
 | Polygon               | Click vertices, Finish to close. Rotate handle turns it.                                                                                                  |
-| Measure               | Geodesic length, optional terrain samples.                                                                                                                |
+| Measure               | Geodesic length, live while you draw, optional terrain samples.                                                                                           |
 | Marker                | Labeled map pin. Drag the pin to move it.                                                                                                                 |
 | Text                  | Click to place. Drag to move, corner to resize, rotate handle to turn. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
 | Finish                | Commit the draft (same as Enter).                                                                                                                         |
-
 
 Mapbox and MapLibre query rendered road and building layers — no `trace` prop.
 Google, Leaflet, and ArcGIS need a `trace` callback; see
@@ -580,21 +613,19 @@ Google, Leaflet, and ArcGIS need a `trace` callback; see
 
 ## API snapshot
 
-
-| Export                 | Role                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `/core`                | Session, hooks, types, utils, toolbar, list — no `Annotate`.                    |
-| `AnnotateProvider`     | Session. Optional `annotations` / `onChange` / `onCommit` / `fonts`.            |
-| `Annotate`             | Map child. Drawing, hover handles, layers.                                      |
-| `AnnotateToolbar`      | Stock icon toolbar — optional.                                                  |
-| `AnnotateList`         | Stock label / color / font / size / delete list — optional.                     |
-| `useAnnotate()`        | Full session: `setTool`, `setLabel`, `setStyle`, `fonts`, …                     |
-| `useAnnotateTools()`   | `{ items, finish, canFinish, deleteSelected, undo, redo }`                      |
-| `useAnnotateItems()`   | Rows with `isSelected`, `select`, `setLabel`, `setColor`, `setStyle`, `remove`. |
-| `useAnnotateFonts()`   | Font catalog from the provider.                                                 |
-| `useLiveAnnotations()` | In-flight geometry during a gesture, one render per frame.                      |
-| `AnnotateToolIcon`     | Bundled tool SVG.                                                               |
-
+| Export                 | Role                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `/core`                | Session, hooks, types, utils, toolbar, list — no `Annotate`.                      |
+| `AnnotateProvider`     | Session. Optional `annotations` / `onChange` / `onCommit` / `drawMode` / `fonts`. |
+| `Annotate`             | Map child. Drawing, hover handles, layers.                                        |
+| `AnnotateToolbar`      | Stock icon toolbar — optional.                                                    |
+| `AnnotateList`         | Stock label / color / font / size / delete list — optional.                       |
+| `useAnnotate()`        | Full session: `setTool`, `setLabel`, `setStyle`, `fonts`, …                       |
+| `useAnnotateTools()`   | `{ items, finish, canFinish, deleteSelected, undo, redo }`                        |
+| `useAnnotateItems()`   | Rows with `isSelected`, `select`, `setLabel`, `setColor`, `setStyle`, `remove`.   |
+| `useAnnotateFonts()`   | Font catalog from the provider.                                                   |
+| `useLiveAnnotations()` | In-flight geometry during a gesture, one render per frame.                        |
+| `AnnotateToolIcon`     | Bundled tool SVG.                                                                 |
 
 Types ship with the package: `Annotation`, `AnnotateTool`, `AnnotateSession`,
 and the rest.
@@ -603,7 +634,6 @@ and the rest.
 
 CI runs `npm run check` (typecheck, lint, Prettier, Vitest) on Node 20 and 22.
 Tests are jsdom unit tests, not live map tiles.
-
 
 | Package                     | Peer floor | Tested in this repo |
 | --------------------------- | ---------- | ------------------- |
@@ -616,7 +646,6 @@ Tests are jsdom unit tests, not live map tiles.
 | `react-leaflet`             | ≥ 4        | 5.0                 |
 | `@arcgis/core`              | ≥ 4.28     | peer only           |
 
-
 React 18 and react-leaflet 4 stay in range. ArcGIS is an optional peer and is
 not installed in the default CI graph.
 
@@ -626,7 +655,7 @@ not installed in the default CI graph.
 - [Code of conduct](./CODE_OF_CONDUCT.md)
 - [Changelog](./CHANGELOG.md) · [Releases](https://github.com/orange-groove/react-map-annotate/releases)
 - [Bug report](https://github.com/orange-groove/react-map-annotate/issues/new?template=bug.yml) ·
-[Feature request](https://github.com/orange-groove/react-map-annotate/issues/new?template=feature.yml)
+  [Feature request](https://github.com/orange-groove/react-map-annotate/issues/new?template=feature.yml)
 
 ## License
 

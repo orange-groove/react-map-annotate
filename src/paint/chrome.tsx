@@ -19,6 +19,7 @@ import { AnnotationLabel } from "./annotation-label";
 import { AnnotationMarker } from "./annotation-marker";
 import { AnnotationText } from "./annotation-text";
 import { DefaultArrowHead } from "./arrow-head";
+import { DraftMeasure } from "./draft-measure";
 import { DraftVertices, EditHandles } from "./edit-handles";
 
 export function AnnotateChrome({
@@ -132,6 +133,8 @@ export function AnnotateChrome({
       {draft?.kind === "polygon" ? (
         <DraftVertices coordinates={draft.coordinates} />
       ) : null}
+
+      <DraftMeasure draft={draft} />
 
       <EditHandles
         annotations={annotations}

@@ -83,6 +83,13 @@ export type AnnotateTool =
 
 export type AnnotationKind = Exclude<AnnotateTool, "pan" | "select">;
 
+/**
+ * How a two-point shape is drawn. `click` sets the first point on one click and
+ * finishes on the second; `drag` takes the whole shape from one press, move,
+ * and release. Freehand is always a drag and polygon is always click-per-vertex.
+ */
+export type DrawMode = "click" | "drag";
+
 export interface AnnotationStyle {
   color?: string;
   strokeWidth?: number;
@@ -249,6 +256,8 @@ export interface AnnotateProps extends AnnotateCallbacks {
   selectedIds?: string[];
   defaultColor?: string;
   defaultStrokeWidth?: number;
+  /** How two-point shapes are drawn. Defaults to `"click"`. */
+  drawMode?: DrawMode;
   sampleIntervalMeters?: number;
   enableTerrain?: boolean;
   terrainSource?: TerrainSourceOptions;

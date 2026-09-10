@@ -205,6 +205,21 @@ html.rma-dragging * {
   outline: none;
 }
 
+.rma-draft-measure {
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font:
+    600 11px/1.4 system-ui,
+    sans-serif;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+  white-space: nowrap;
+  /* Sits under the pointer, so it must never eat the click that lands a vertex. */
+  pointer-events: none;
+}
+
 .rma-label-area {
   margin-top: 3px;
   padding: 1px 6px;

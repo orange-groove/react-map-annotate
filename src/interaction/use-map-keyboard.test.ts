@@ -9,6 +9,7 @@ function latest(overrides: Partial<MapDrawingLatest> = {}): MapDrawingLatest {
     tool: "select",
     selectedId: null,
     defaultColor: "#2563eb",
+    drawMode: "click",
     sampleIntervalMeters: 10,
     ...overrides,
   };

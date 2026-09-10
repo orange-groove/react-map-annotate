@@ -3,6 +3,27 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.20
+
+- `drawMode` on `AnnotateProvider` and `Annotate` picks the create gesture for
+  the two-point shapes — circle, rectangle, line, arrow, bidirectional arrow,
+  and measure. `"click"` places the first point on one click and finishes on the
+  second; `"drag"` takes the whole shape from one press-drag-release.
+- **Behaviour change:** `drawMode` defaults to `"click"`, so circles and
+  rectangles are now drawn with two clicks rather than a drag. Pass
+  `drawMode="drag"` to keep the old gesture. Lines, arrows, and measures are
+  unchanged by the default.
+- Freehand, polygon, marker, text, and trace are untouched by `drawMode`: each
+  has only one honest gesture, and keeps it.
+- A measure shows its length while it is being drawn, at the head of the path,
+  from the first point rather than only once it is finished. The live figure is
+  geodesic from the vertices, so it costs nothing per frame and reads the same
+  as the `caption` that replaces it on commit. Terrain sampling still waits for
+  the commit.
+- `isDragTool` and `isClickVertexTool` take an optional `drawMode` as their
+  second argument. Called with one argument they answer for the default mode,
+  which means `isDragTool("circle")` is now `false`.
+
 ## 0.3.18
 
 - The rotate handle no longer sits on the corner handle. It was placed 22px

@@ -42,6 +42,8 @@ export {
   TEXT_FONT_OPTIONS,
   TOOL_LABELS,
   DRAW_TOOLS,
+  DUAL_GESTURE_TOOLS,
+  DEFAULT_DRAW_MODE,
   IDLE_TOOL,
   SAMPLE_INTERVAL_METERS,
   HANDLE_HIT_PX,
@@ -52,12 +54,14 @@ export {
   emptyClickClearsSelection,
   isDragTool,
   isClickVertexTool,
+  isDualGestureTool,
   isPointTool,
   isTraceTool,
   isAnnotateLayerId,
   TRACE_PIXEL_TOLERANCE,
   TRACE_STITCH_METERS,
 } from "./core/constants";
+export type { DualGestureTool } from "./core/constants";
 
 export {
   haversineDistance,
@@ -171,6 +175,7 @@ export type {
   ChangeMeta,
   ChangeReason,
   ChangeCause,
+  DrawMode,
   AnnotateFont,
   ElevationSample,
   Measurement,
