@@ -9,6 +9,7 @@ export default defineConfig({
     google: "src/google.ts",
     leaflet: "src/leaflet.ts",
     arcgis: "src/arcgis.ts",
+    osm: "src/osm.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

@@ -342,7 +342,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 | ArcGIS   | `/arcgis`                                        | [examples/arcgis.tsx](./examples/arcgis.tsx)     |
 
 Session imports stay on `/core`. Engine entries still re-export the session so
-existing `/mapbox` (and root) imports keep working.
+existing `/mapbox` (and root) imports keep working. `/osm` is the optional
+OpenStreetMap Trace reader for the raster engines; see
+[Enable Trace on Google, Leaflet, and ArcGIS](#enable-trace-on-google-leaflet-and-arcgis).
 
 Mapbox `enableTerrain` uses the Mapbox terrain DEM. MapLibre needs an explicit
 raster-DEM (`terrainSource`). Terrain is a no-op on Google, Leaflet, and
@@ -381,6 +383,26 @@ The saved annotation carries `distanceMeters`, the samples when terrain is
 enabled, and the same formatted string on `caption`.
 [examples/measure.tsx](./examples/measure.tsx).
 
+### Trace takes one block, not the whole road
+
+A vector tile hands back a whole road feature, which runs for as many blocks as
+its tags stay the same — trace 9th Avenue and you get every block of it. So
+Trace cuts the road at its crossroads and keeps the block under the pointer.
+Click the next block to extend.
+
+The crossroads are already in the data: where two roads meet at grade they
+share a node, so a vertex of this road that another road also owns is a
+junction. A bridge or tunnel crosses without sharing a node and stays whole,
+and a crosswalk, driveway, or alley is too small to cut at.
+
+```tsx
+// Whole feature, the way it came out of the tile.
+<Annotate trace={{ splitAtJunctions: false }} />
+```
+
+`junctionToleranceMeters` (default 2) sets how close two vertices have to be to
+count as one node — raise it for a source whose roads do not quite meet.
+
 ### Enable Trace on Google, Leaflet, and ArcGIS
 
 Mapbox and MapLibre already know which road or building is under the pointer.
@@ -397,14 +419,16 @@ you return. The callback may be async.
 Do **not** put this on `AnnotateProvider` if you also mount Mapbox or MapLibre
 in the same session — that replaces their built-in query.
 
+`/osm` ships a ready-made one so those engines behave like the vector engines,
+blocks and all. It is a separate entry point: import it and nothing else in the
+package grows, and no request is made unless you pass the callback.
+
 ```tsx
 import { Annotate } from "@orange-groove/react-map-annotate/leaflet";
-import type { TraceFn } from "@orange-groove/react-map-annotate/leaflet";
+import { createOsmTrace } from "@orange-groove/react-map-annotate/osm";
 
-const trace: TraceFn = async (lngLat) => {
-  const coordinates = await lookupRoadOrBuilding(lngLat); // OSM, your GIS, …
-  return coordinates ? { coordinates } : null;
-};
+// Module scope, not per render — it keeps what it has already read.
+const trace = createOsmTrace();
 
 <MapContainer center={[40.7484, -73.9857]} zoom={16}>
   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -412,10 +436,38 @@ const trace: TraceFn = async (lngLat) => {
 </MapContainer>;
 ```
 
-Same prop on `/google` and `/arcgis`. `lookupRoadOrBuilding` is yours: fetch
-OSM (or Overpass), hit-test a GeoJSON layer, call an internal roads API. The
-[live demo](https://react-map-annotate-demo.onrender.com/) uses OSM for those
-three maps only.
+It reads the viewport off the map on the first hover, keeps the ways, and cuts
+them into blocks at their shared nodes — the same rule the vector engines use,
+but with real OSM node ids, so the cuts are exact rather than matched by
+position. There is nothing to prefetch and no `useEffect` to wire.
+
+Three things to know before you ship it. OSM data is ODbL, so credit
+OpenStreetMap wherever the annotations are shown. The defaults are shared
+community endpoints — Overpass, then the OSM map API — which are rate limited
+and go down; point it at your own service for real traffic. And the payload is
+worth a thought: Overpass is asked for roads (and buildings) alone, but the map
+API fallback cannot filter, so the same request comes back tens of megabytes in
+a dense city. `buildings: false` cuts it a long way if you only trace roads.
+
+```tsx
+const trace = createOsmTrace({
+  loadWays: async (bbox, signal) => myRoadsApi(bbox, signal), // your service
+  overpassEndpoints: [], // or keep the fallback, pointed at your instance
+  hitMeters: 36,
+  buildings: false,
+  splitAtJunctions: false, // whole ways, the old behaviour
+});
+```
+
+`loadWays` returns `OsmWay[]` — `{ id, coordinates, nodes, tags }`, where
+`nodes` is one key per coordinate. Any two ways that use the same key are
+treated as meeting there, so if your source has no node ids, pass the
+coordinate and the split still works.
+
+Or write the whole callback yourself: hit-test a GeoJSON layer, call an
+internal roads API, whatever you have. `splitPathAtJunctions(path, others)` is
+exported from the root for that case, so you can reuse the block split over any
+set of lines.
 
 Google's tiles are not OSM. If you pick from OSM on Google, the highlight can
 disagree with the basemap. Leaflet or ArcGIS on OSM tiles will match more
@@ -533,8 +585,9 @@ Pick a tool. Draw. Press **Finish**, Enter, or Escape to commit.
   adds or removes. Drag an empty area to draw a dotted box; everything inside
   is selected. Hold Shift while dragging the box to add to the selection.
 - **Trace** — hover a road or building outline to highlight it. Click to
-  keep that feature. Move the finished shape by its bounds box; it has no
-  vertex handles.
+  keep that feature. Roads arrive one block at a time, cut at their crossroads;
+  click the next block to extend. Move the finished shape by its bounds box; it
+  has no vertex handles.
 - **Circle, rectangle, line, arrow, bidirectional arrow, measure** — click to
   place the first point, click again to finish. Set `drawMode="drag"` to take
   the whole shape from one press-drag-release instead.

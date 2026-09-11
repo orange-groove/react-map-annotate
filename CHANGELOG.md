@@ -3,6 +3,29 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.21
+
+- Trace cuts a road at its crossroads and keeps the block under the pointer. A
+  vector tile hands back a whole road feature, so tracing 9th Avenue used to
+  paint every block it runs through. Crossroads come from the shared nodes
+  already in the data, which keeps a bridge or tunnel whole and does not cut at
+  a crosswalk, driveway, or alley. Click the next block to extend.
+- `trace={{ splitAtJunctions: false }}` keeps the old whole-feature behaviour,
+  and `junctionToleranceMeters` sets how close two vertices must be to count as
+  one junction node.
+- New `/osm` entry point: `createOsmTrace()` is a ready-made `trace` callback
+  for Google, Leaflet, and ArcGIS, which have no vector query of their own. It
+  reads the viewport off the map, keeps what it has read, and returns the road
+  block or building outline under the pointer — so those engines now behave
+  like Mapbox and MapLibre rather than painting a whole way. Nothing is
+  imported or requested unless you pass the callback.
+- `loadWays` on `createOsmTrace` swaps the data source for your own service.
+  The defaults are Overpass and then the OSM map API, which are rate limited
+  and cannot be relied on for production traffic. OSM data is ODbL, so credit
+  OpenStreetMap where the annotations are shown.
+- `splitPathAtJunctions` is exported from the root for hosts writing their own
+  `trace` callback over some other set of lines.
+
 ## 0.3.20
 
 - `drawMode` on `AnnotateProvider` and `Annotate` picks the create gesture for
@@ -23,6 +46,10 @@ Release notes also appear on
 - `isDragTool` and `isClickVertexTool` take an optional `drawMode` as their
   second argument. Called with one argument they answer for the default mode,
   which means `isDragTool("circle")` is now `false`.
+
+## 0.3.19
+
+Update README.md
 
 ## 0.3.18
 

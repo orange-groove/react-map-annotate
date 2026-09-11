@@ -26,6 +26,13 @@ export type TraceFn = (
 export interface TraceOptions {
   layers?: string[];
   pixelTolerance?: number;
+  /**
+   * Cut the traced road at the junctions it shares with other roads and keep
+   * only the block under the cursor. Defaults to true.
+   */
+  splitAtJunctions?: boolean;
+  /** How close two road vertices must be to count as one junction node. */
+  junctionToleranceMeters?: number;
 }
 
 export type TraceOption = boolean | TraceFn | TraceOptions;
@@ -34,6 +41,7 @@ export interface TraceMap {
   project: (lngLat: MapLngLat) => MapPoint;
   unproject: (point: [number, number] | MapPoint) => MapLngLat;
   getLayer: (id: string) => unknown;
+  getCanvas?: () => HTMLElement | null;
   getStyle?: () => { layers?: Array<{ id: string; type: string }> };
   queryRenderedFeatures: (
     geometry?:
@@ -46,7 +54,7 @@ export interface TraceMap {
     layer?: { id?: string; type?: string };
     sourceLayer?: string;
     source?: string;
-    properties?: { id?: unknown };
+    properties?: Record<string, unknown>;
   }>;
   querySourceFeatures?: (
     source: string,
@@ -55,7 +63,7 @@ export interface TraceMap {
     geometry?: GeoJSON.Geometry;
     layer?: { id?: string; type?: string };
     sourceLayer?: string;
-    properties?: { id?: unknown };
+    properties?: Record<string, unknown>;
   }>;
 }
 

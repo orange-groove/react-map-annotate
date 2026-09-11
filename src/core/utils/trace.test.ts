@@ -6,6 +6,7 @@ import {
   listTraceLayers,
   resolveTrace,
   sameTracePath,
+  splitPathAtJunctions,
   stitchTrace,
   traceRenderedRoads,
 } from "./trace";
@@ -19,7 +20,7 @@ function mapOf({
     geometry?: GeoJSON.Geometry;
     layer?: { id?: string };
     sourceLayer?: string;
-    properties?: { id?: unknown };
+    properties?: Record<string, unknown>;
   }>;
 } = {}): TraceMap {
   return {
@@ -270,6 +271,137 @@ describe("traceRenderedRoads", () => {
       traceRenderedRoads(map, { x: 0, y: 0 }, { layers: ["road-street"] })
         ?.coordinates,
     ).toEqual([origin, east20]);
+  });
+});
+
+describe("splitPathAtJunctions", () => {
+  const avenue: LngLat[] = [origin, east20, east40, east80];
+  const crossAt = (at: LngLat): LngLat[] => [
+    destination(at, 180, 20),
+    at,
+    destination(at, 0, 20),
+  ];
+
+  it("cuts where another road shares a node and leaves", () => {
+    expect(splitPathAtJunctions(avenue, [crossAt(east20)])).toEqual([
+      [origin, east20],
+      [east20, east40, east80],
+    ]);
+  });
+
+  it("cuts once per crossroad", () => {
+    expect(
+      splitPathAtJunctions(avenue, [crossAt(east20), crossAt(east40)]),
+    ).toEqual([
+      [origin, east20],
+      [east20, east40],
+      [east40, east80],
+    ]);
+  });
+
+  it("treats a node a few centimetres off as the same junction", () => {
+    const drifted = destination(east20, 90, 0.4);
+    expect(splitPathAtJunctions(avenue, [crossAt(drifted)])).toEqual([
+      [origin, east20],
+      [east20, east40, east80],
+    ]);
+  });
+
+  it("ignores a copy of the same road clipped at a tile edge", () => {
+    expect(splitPathAtJunctions(avenue, [[origin, east20, east40]])).toEqual([
+      avenue,
+    ]);
+  });
+
+  it("leaves a bridge crossing alone when no node is shared", () => {
+    const over = destination(east20, 90, 10);
+    expect(
+      splitPathAtJunctions(avenue, [
+        [destination(over, 180, 20), destination(over, 0, 20)],
+      ]),
+    ).toEqual([avenue]);
+  });
+
+  it("does not cut at the ends of the road", () => {
+    expect(splitPathAtJunctions(avenue, [crossAt(origin)])).toEqual([avenue]);
+  });
+});
+
+describe("traceRenderedRoads junction splitting", () => {
+  const avenue: LngLat[] = [origin, east20, east40, east80];
+  const cross = (at: LngLat, id: string) => ({
+    layer: { id: "road-street" },
+    properties: { id },
+    geometry: {
+      type: "LineString" as const,
+      coordinates: [destination(at, 180, 20), at, destination(at, 0, 20)],
+    },
+  });
+  const features = [
+    {
+      layer: { id: "road-street" },
+      properties: { id: "avenue" },
+      geometry: { type: "LineString" as const, coordinates: avenue },
+    },
+    cross(east20, "cross-a"),
+    cross(east40, "cross-b"),
+  ];
+  const east30 = destination(origin, 90, 30);
+
+  it("keeps only the block under the cursor", () => {
+    const map = mapOf({
+      layers: [{ id: "road-street", type: "line" }],
+      features,
+    });
+    const hit = traceRenderedRoads(map, { x: east30[0] * 1_000_000, y: 0 });
+    expect(hit?.coordinates).toEqual([east20, east40]);
+  });
+
+  it("gives each block its own id", () => {
+    const map = mapOf({
+      layers: [{ id: "road-street", type: "line" }],
+      features,
+    });
+    const first = traceRenderedRoads(map, { x: east10[0] * 1_000_000, y: 0 });
+    const second = traceRenderedRoads(map, { x: east30[0] * 1_000_000, y: 0 });
+    expect(first?.coordinates).toEqual([origin, east20]);
+    expect(first?.id).not.toBe(second?.id);
+  });
+
+  it("does not cut at a crosswalk or driveway", () => {
+    const map = mapOf({
+      layers: [{ id: "road-street", type: "line" }],
+      features: [
+        {
+          layer: { id: "road-street" },
+          properties: { id: "quiet-avenue", class: "secondary" },
+          geometry: { type: "LineString" as const, coordinates: avenue },
+        },
+        {
+          ...cross(east20, "crosswalk"),
+          properties: { id: "crosswalk", class: "path" },
+        },
+        {
+          ...cross(east40, "driveway"),
+          properties: { id: "driveway", class: "service" },
+        },
+      ],
+    });
+    const hit = traceRenderedRoads(map, { x: east30[0] * 1_000_000, y: 0 });
+    expect(hit?.coordinates).toEqual(avenue);
+  });
+
+  it("returns the whole road when splitting is off", () => {
+    const map = mapOf({
+      layers: [{ id: "road-street", type: "line" }],
+      features,
+    });
+    const hit = traceRenderedRoads(
+      map,
+      { x: east30[0] * 1_000_000, y: 0 },
+      { splitAtJunctions: false },
+    );
+    expect(hit?.coordinates).toEqual(avenue);
   });
 });
 

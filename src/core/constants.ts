@@ -73,6 +73,7 @@ export const HANDLE_HIT_PX = 20;
 export const DUPLICATE_OFFSET_PX = 32;
 export const TRACE_PIXEL_TOLERANCE = 32;
 export const TRACE_STITCH_METERS = 24;
+export const TRACE_JUNCTION_METERS = 2;
 export const MAPBOX_TERRAIN_DEM = "mapbox://mapbox.mapbox-terrain-dem-v1";
 export const EARTH_RADIUS_M = 6_371_000;
 

@@ -1,6 +1,6 @@
 {
   "name": "@orange-groove/react-map-annotate",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "description": "Draw on Mapbox, MapLibre, Google Maps, Leaflet, or ArcGIS in React: freehand, arrows, shapes, geodesic measure, and labeled markers — with your React state and your toolbar.",
   "license": "MIT",
   "author": "orange-groove",
@@ -51,6 +51,11 @@
       "types": "./dist/arcgis.d.ts",
       "import": "./dist/arcgis.js",
       "require": "./dist/arcgis.cjs"
+    },
+    "./osm": {
+      "types": "./dist/osm.d.ts",
+      "import": "./dist/osm.js",
+      "require": "./dist/osm.cjs"
     },
     "./styles.css": "./dist/styles.css"
   },

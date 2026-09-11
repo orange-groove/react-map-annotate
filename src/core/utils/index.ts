@@ -159,6 +159,7 @@ export {
 export {
   listTraceLayers,
   traceRenderedRoads,
+  splitPathAtJunctions,
   resolveTrace,
   stitchTrace,
   sameTracePath,

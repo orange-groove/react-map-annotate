@@ -1,5 +1,6 @@
 import {
   LAYER_PREFIX,
+  TRACE_JUNCTION_METERS,
   TRACE_PIXEL_TOLERANCE,
   TRACE_STITCH_METERS,
 } from "../constants";
@@ -21,8 +22,15 @@ const ROAD_LAYER =
 const BUILDING_LAYER = /building|structure/;
 const IGNORE_LAYER =
   /water|landcover|landuse|admin|boundar|label|symbol|hillshade|background|sky|place|poi|housenum|park|rma-/;
+const MINOR_ROAD =
+  /path|footway|sidewalk|crossing|cycle|steps|track|service|driveway|alley|ferry|rail|pier|platform|construction|proposed/;
 
 type TraceFeature = ReturnType<TraceMap["queryRenderedFeatures"]>[number];
+
+/** Roughly 2m of longitude at the equator; the junction lookup grid. */
+const JUNCTION_CELL_DEG = 2e-5;
+const SPLIT_CACHE_LIMIT = 128;
+const splitCache = new Map<string, LngLat[][]>();
 
 export function listTraceLayers(map: TraceMap, layers?: string[]): string[] {
   if (layers?.length) {
@@ -224,12 +232,17 @@ function queryLoadedSources(map: TraceMap): TraceFeature[] {
   return features;
 }
 
+interface TraceCandidate {
+  hit: TraceHit;
+  feature: TraceFeature;
+}
+
 function pickTraceHit(
   map: TraceMap,
   point: MapPoint,
   features: TraceFeature[],
   tolerance: number,
-): TraceHit | null {
+): TraceCandidate | null {
   const candidates: Array<{
     feature: TraceFeature;
     coordinates: LngLat[];
@@ -267,7 +280,245 @@ function pickTraceHit(
     typeof best.feature.properties?.id === "number"
       ? String(best.feature.properties.id)
       : `${best.feature.layer?.id ?? best.feature.sourceLayer ?? "trace"}:${best.coordinates[0][0].toFixed(5)},${best.coordinates[0][1].toFixed(5)}`;
-  return { id, coordinates: best.coordinates };
+  return {
+    hit: { id, coordinates: best.coordinates },
+    feature: best.feature,
+  };
+}
+
+/**
+ * Vector tiles hand back a whole road feature, which runs for many blocks. OSM
+ * puts a shared node wherever two roads meet at grade, so the crossroads are
+ * already in the geometry: a vertex of this road that another road also owns.
+ * Cutting there keeps bridges and tunnels whole, since they cross without
+ * sharing a node.
+ */
+export function splitPathAtJunctions(
+  path: LngLat[],
+  others: LngLat[][],
+  toleranceMeters = TRACE_JUNCTION_METERS,
+): LngLat[][] {
+  if (path.length < 3) return [path.slice()];
+  const grid = buildVertexGrid(path);
+  const matchIndex = (point: LngLat) =>
+    findVertexIndex(grid, path, point, toleranceMeters);
+  const cuts = new Set<number>();
+  for (const other of others) {
+    if (other.length < 2) continue;
+    for (let index = 0; index < other.length; index += 1) {
+      const at = matchIndex(other[index]);
+      if (at <= 0 || at >= path.length - 1) continue;
+      // A second copy of this same road, clipped at a tile edge, touches along
+      // its length. A crossroad touches at one node and leaves.
+      const neighbours: number[] = [];
+      if (index > 0) neighbours.push(matchIndex(other[index - 1]));
+      if (index < other.length - 1)
+        neighbours.push(matchIndex(other[index + 1]));
+      if (neighbours.some((neighbour) => neighbour < 0)) cuts.add(at);
+    }
+  }
+  if (cuts.size === 0) return [path.slice()];
+  const bounds = [0, ...[...cuts].sort((a, b) => a - b), path.length - 1];
+  const parts: LngLat[][] = [];
+  for (let index = 1; index < bounds.length; index += 1) {
+    const part = path.slice(bounds[index - 1], bounds[index] + 1);
+    if (part.length >= 2) parts.push(part);
+  }
+  return parts;
+}
+
+function buildVertexGrid(path: LngLat[]): Map<string, number[]> {
+  const grid = new Map<string, number[]>();
+  for (let index = 0; index < path.length; index += 1) {
+    const key = cellKey(path[index]);
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(index);
+    else grid.set(key, [index]);
+  }
+  return grid;
+}
+
+function cellKey([lng, lat]: LngLat): string {
+  return `${Math.round(lng / JUNCTION_CELL_DEG)}:${Math.round(lat / JUNCTION_CELL_DEG)}`;
+}
+
+function findVertexIndex(
+  grid: Map<string, number[]>,
+  path: LngLat[],
+  point: LngLat,
+  toleranceMeters: number,
+): number {
+  const column = Math.round(point[0] / JUNCTION_CELL_DEG);
+  const row = Math.round(point[1] / JUNCTION_CELL_DEG);
+  let best = -1;
+  let bestDistance = toleranceMeters;
+  for (let dx = -1; dx <= 1; dx += 1) {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (const index of grid.get(`${column + dx}:${row + dy}`) ?? []) {
+        const distance = haversineDistance(path[index], point);
+        if (distance <= bestDistance) {
+          best = index;
+          bestDistance = distance;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function isClosedPath(coordinates: LngLat[]): boolean {
+  const first = coordinates[0];
+  const last = coordinates[coordinates.length - 1];
+  return (
+    coordinates.length >= 4 && first[0] === last[0] && first[1] === last[1]
+  );
+}
+
+function isRoadPathFeature(feature: TraceFeature): boolean {
+  if (!isUsableFeature(feature)) return false;
+  const type = feature.geometry?.type;
+  if (type !== "LineString" && type !== "MultiLineString") return false;
+  return !(
+    isBuildingName(feature.layer?.id) || isBuildingName(feature.sourceLayer)
+  );
+}
+
+/** Mapbox and OpenMapTiles both carry the road class on the feature. */
+function roadClass(feature: TraceFeature): string {
+  const properties = feature.properties ?? {};
+  for (const key of ["class", "highway", "subclass", "type"]) {
+    const value = properties[key];
+    if (typeof value === "string" && value) return value.toLowerCase();
+  }
+  return feature.layer?.id?.toLowerCase() ?? "";
+}
+
+/**
+ * A crosswalk, driveway, or alley meets the street at a node too, and cutting
+ * there leaves slivers rather than blocks. Only a road of its own kind, or one
+ * as big as the road being traced, counts as a crossroad.
+ */
+function isCrossroadFeature(
+  feature: TraceFeature,
+  tracedClass: string,
+): boolean {
+  if (!isRoadPathFeature(feature)) return false;
+  const value = roadClass(feature);
+  return !MINOR_ROAD.test(value) || value === tracedClass;
+}
+
+function roadPathsAlong(
+  map: TraceMap,
+  path: LngLat[],
+  layers: string[] | undefined,
+  tolerance: number,
+  tracedClass: string,
+): LngLat[][] {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [lng, lat] of path) {
+    const screen = map.project({ lng, lat });
+    if (!Number.isFinite(screen.x) || !Number.isFinite(screen.y)) continue;
+    minX = Math.min(minX, screen.x);
+    minY = Math.min(minY, screen.y);
+    maxX = Math.max(maxX, screen.x);
+    maxY = Math.max(maxY, screen.y);
+  }
+  if (!Number.isFinite(minX)) return [];
+  const box: [[number, number], [number, number]] = [
+    [minX - tolerance, minY - tolerance],
+    [maxX + tolerance, maxY + tolerance],
+  ];
+  const features = queryUsable(map, box, layers);
+  const paths: LngLat[][] = [];
+  for (const feature of features) {
+    if (!isCrossroadFeature(feature, tracedClass)) continue;
+    for (const coordinates of pathsFromGeometry(feature.geometry)) {
+      if (coordinates.length >= 2) paths.push(coordinates);
+    }
+  }
+  return paths;
+}
+
+function nearestPart(
+  map: TraceMap,
+  point: MapPoint,
+  parts: LngLat[][],
+): LngLat[] {
+  let best = parts[0];
+  let bestDistance = Infinity;
+  for (const part of parts) {
+    const distance = distanceToLine(
+      (lngLat) => map.project(lngLat),
+      point,
+      part,
+    );
+    if (distance < bestDistance) {
+      best = part;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function splitCacheKey(hit: TraceHit): string {
+  const path = hit.coordinates;
+  const first = path[0];
+  const last = path[path.length - 1];
+  return [
+    hit.id ?? "",
+    path.length,
+    first[0].toFixed(6),
+    first[1].toFixed(6),
+    last[0].toFixed(6),
+    last[1].toFixed(6),
+  ].join("|");
+}
+
+function rememberSplit(key: string, parts: LngLat[][]): void {
+  if (splitCache.size >= SPLIT_CACHE_LIMIT) {
+    const oldest = splitCache.keys().next().value;
+    if (oldest !== undefined) splitCache.delete(oldest);
+  }
+  splitCache.set(key, parts);
+}
+
+function splitTraceHit(
+  map: TraceMap,
+  point: MapPoint,
+  candidate: TraceCandidate,
+  layers: string[] | undefined,
+  tolerance: number,
+  options: TraceOptions,
+): TraceHit {
+  const hit = candidate.hit;
+  const path = hit.coordinates;
+  if (path.length < 3 || isClosedPath(path)) return hit;
+  const key = splitCacheKey(hit);
+  let parts = splitCache.get(key);
+  if (!parts) {
+    parts = splitPathAtJunctions(
+      path,
+      roadPathsAlong(
+        map,
+        path,
+        layers,
+        tolerance,
+        roadClass(candidate.feature),
+      ),
+      options.junctionToleranceMeters ?? TRACE_JUNCTION_METERS,
+    );
+    rememberSplit(key, parts);
+  }
+  if (parts.length < 2) return hit;
+  const part = nearestPart(map, point, parts);
+  const start = part[0];
+  return {
+    id: `${hit.id ?? "trace"}@${start[0].toFixed(5)},${start[1].toFixed(5)}`,
+    coordinates: part,
+  };
 }
 
 export function traceRenderedRoads(
@@ -278,13 +529,12 @@ export function traceRenderedRoads(
   const screen = { x: point.x, y: point.y };
   const tolerance = options.pixelTolerance ?? TRACE_PIXEL_TOLERANCE;
   const layers = listTraceLayers(map, options.layers);
-  const features = queryAtPoint(
-    map,
-    screen,
-    layers.length ? layers : undefined,
-    tolerance,
-  );
-  return pickTraceHit(map, screen, features, tolerance * 4);
+  const filter = layers.length ? layers : undefined;
+  const features = queryAtPoint(map, screen, filter, tolerance);
+  const candidate = pickTraceHit(map, screen, features, tolerance * 4);
+  if (!candidate) return null;
+  if (options.splitAtJunctions === false) return candidate.hit;
+  return splitTraceHit(map, screen, candidate, filter, tolerance, options);
 }
 
 function isTracePromise(

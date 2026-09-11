@@ -156,6 +156,7 @@ export {
   ungroupAnnotations,
   canGroupAnnotations,
   canUngroupAnnotations,
+  splitPathAtJunctions,
 } from "./core/utils";
 export type {
   TerrainMap,
