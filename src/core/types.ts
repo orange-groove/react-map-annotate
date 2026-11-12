@@ -42,7 +42,10 @@ export interface TraceMap {
   unproject: (point: [number, number] | MapPoint) => MapLngLat;
   getLayer: (id: string) => unknown;
   getCanvas?: () => HTMLElement | null;
-  getStyle?: () => { layers?: Array<{ id: string; type: string }> };
+  getStyle?: () => {
+    layers?: Array<{ id: string; type: string }>;
+    sources?: Record<string, { type?: string }>;
+  };
   queryRenderedFeatures: (
     geometry?:
       | MapPoint

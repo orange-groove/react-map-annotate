@@ -407,8 +407,10 @@ count as one node — raise it for a source whose roads do not quite meet.
 
 Mapbox and MapLibre already know which road or building is under the pointer.
 Their vector styles expose `queryRenderedFeatures`, so Trace is on by default:
-hover highlights the rendered outline, click keeps `kind: "trace"`. You do not
-pass a `trace` prop on those engines.
+hover highlights the rendered outline, click keeps `kind: "trace"`. A style that
+paints buildings only as imagery, such as satellite streets, still traces the
+footprint from the vector tiles. You do not pass a `trace` prop on those
+engines.
 
 Google, Leaflet, and ArcGIS paint a raster basemap. There is no rendered
 feature graph to query, so the library cannot guess a road. You supply one:
@@ -659,7 +661,7 @@ enabled, each sample records ground height.
 | Text                  | Click to place. Drag to move, corner to resize, rotate handle to turn. Color and font from the list, or `setStyle({ fontFamily })`. Double-click to edit. |
 | Finish                | Commit the draft (same as Enter).                                                                                                                         |
 
-Mapbox and MapLibre query rendered road and building layers — no `trace` prop.
+Mapbox and MapLibre query rendered roads and building footprints from the vector tiles — no `trace` prop.
 Google, Leaflet, and ArcGIS need a `trace` callback; see
 [Enable Trace on Google, Leaflet, and ArcGIS](#enable-trace-on-google-leaflet-and-arcgis).
 `trace={false}` turns it off.

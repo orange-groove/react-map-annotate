@@ -14,6 +14,8 @@ import {
 function mapOf({
   layers = [],
   features = [],
+  sources = {},
+  sourceFeatures = {},
 }: {
   layers?: Array<{ id: string; type: string }>;
   features?: Array<{
@@ -22,6 +24,17 @@ function mapOf({
     sourceLayer?: string;
     properties?: Record<string, unknown>;
   }>;
+  sources?: Record<string, { type?: string }>;
+  sourceFeatures?: Record<
+    string,
+    Array<{
+      geometry?: GeoJSON.Geometry;
+      layer?: { id?: string };
+      sourceLayer?: string;
+      properties?: Record<string, unknown>;
+      id?: string | number;
+    }>
+  >;
 } = {}): TraceMap {
   return {
     project: ({ lng, lat }) => ({ x: lng * 1_000_000, y: lat * 1_000_000 }),
@@ -30,8 +43,10 @@ function mapOf({
       return { lng: next.x / 1_000_000, lat: next.y / 1_000_000 };
     },
     getLayer: (id) => layers.find((layer) => layer.id === id) ?? null,
-    getStyle: () => ({ layers }),
+    getStyle: () => ({ layers, sources }),
     queryRenderedFeatures: () => features,
+    querySourceFeatures: (source, options) =>
+      sourceFeatures[`${source}:${options?.sourceLayer ?? ""}`] ?? [],
   };
 }
 
@@ -149,6 +164,46 @@ describe("traceRenderedRoads", () => {
       ],
     });
     expect(traceRenderedRoads(map, { x: 0, y: 0 })?.coordinates).toEqual(ring);
+  });
+
+  it("traces a building footprint that the style does not draw", () => {
+    const ring: LngLat[] = [
+      origin,
+      east20,
+      destination(east20, 0, 20),
+      destination(origin, 0, 20),
+      origin,
+    ];
+    const inside = destination(destination(origin, 90, 10), 0, 10);
+    const map = mapOf({
+      layers: [{ id: "road-street", type: "line" }],
+      sources: { composite: { type: "vector" } },
+      features: [
+        {
+          layer: { id: "road-street" },
+          sourceLayer: "road",
+          geometry: { type: "LineString", coordinates: [origin, east80] },
+        },
+      ],
+      sourceFeatures: {
+        "composite:building": [
+          {
+            id: "b1",
+            sourceLayer: "building",
+            geometry: { type: "Polygon", coordinates: [ring.slice(0, -1)] },
+          },
+        ],
+      },
+    });
+    const hit = traceRenderedRoads(map, {
+      x: inside[0] * 1_000_000,
+      y: inside[1] * 1_000_000,
+    });
+    expect(hit?.id).toBe("b1");
+    expect(hit?.coordinates).toEqual(ring);
+    expect(
+      traceRenderedRoads(map, { x: east40[0] * 1_000_000, y: 0 })?.id,
+    ).not.toBe("b1");
   });
 
   it("ignores line features that are not roads or buildings", () => {

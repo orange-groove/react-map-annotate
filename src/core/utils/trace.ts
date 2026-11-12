@@ -96,6 +96,14 @@ function isUsableFeature(feature: TraceFeature): boolean {
   );
 }
 
+function closeRing(ring: LngLat[]): LngLat[] {
+  if (ring.length < 3) return ring;
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (first[0] === last[0] && first[1] === last[1]) return ring;
+  return [...ring, [first[0], first[1]]];
+}
+
 function pathsFromGeometry(geometry?: GeoJSON.Geometry): LngLat[][] {
   if (!geometry) return [];
   if (geometry.type === "LineString") {
@@ -106,12 +114,12 @@ function pathsFromGeometry(geometry?: GeoJSON.Geometry): LngLat[][] {
   }
   if (geometry.type === "Polygon") {
     const ring = geometry.coordinates[0] as LngLat[] | undefined;
-    return ring && ring.length >= 2 ? [ring] : [];
+    return ring && ring.length >= 3 ? [closeRing(ring)] : [];
   }
   if (geometry.type === "MultiPolygon") {
     return geometry.coordinates.flatMap((polygon) => {
       const ring = polygon[0] as LngLat[] | undefined;
-      return ring && ring.length >= 2 ? [ring] : [];
+      return ring && ring.length >= 3 ? [closeRing(ring)] : [];
     });
   }
   if (geometry.type === "GeometryCollection") {
@@ -232,6 +240,160 @@ function queryLoadedSources(map: TraceMap): TraceFeature[] {
   return features;
 }
 
+const BUILDING_SOURCE_LAYER = "building";
+
+interface BuildingFootprint {
+  feature: TraceFeature;
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+}
+
+let footprintCache: { key: string; items: BuildingFootprint[] } | null = null;
+
+function geometryBounds(
+  geometry?: GeoJSON.Geometry,
+): { minLng: number; minLat: number; maxLng: number; maxLat: number } | null {
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+  let found = false;
+  const visit = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    if (typeof value[0] === "number" && typeof value[1] === "number") {
+      const lng = value[0];
+      const lat = value[1];
+      found = true;
+      if (lng < minLng) minLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lng > maxLng) maxLng = lng;
+      if (lat > maxLat) maxLat = lat;
+      return;
+    }
+    for (const child of value) visit(child);
+  };
+  if (!geometry) return null;
+  if (geometry.type === "GeometryCollection") {
+    for (const child of geometry.geometries) {
+      const bounds = geometryBounds(child);
+      if (!bounds) continue;
+      found = true;
+      minLng = Math.min(minLng, bounds.minLng);
+      minLat = Math.min(minLat, bounds.minLat);
+      maxLng = Math.max(maxLng, bounds.maxLng);
+      maxLat = Math.max(maxLat, bounds.maxLat);
+    }
+  } else {
+    visit(geometry.coordinates);
+  }
+  if (!found) return null;
+  return { minLng, minLat, maxLng, maxLat };
+}
+
+function footprintCacheKey(map: TraceMap): string | null {
+  const view = map as TraceMap & {
+    getCenter?: () => { lng: number; lat: number };
+    getZoom?: () => number;
+  };
+  const center = view.getCenter?.();
+  const zoom = view.getZoom?.();
+  if (!center || zoom == null) return null;
+  return `${zoom.toFixed(1)}:${center.lng.toFixed(3)}:${center.lat.toFixed(3)}`;
+}
+
+function loadBuildingFootprints(map: TraceMap): BuildingFootprint[] {
+  if (!map.querySourceFeatures) return [];
+  const key = footprintCacheKey(map);
+  if (key && footprintCache?.key === key) return footprintCache.items;
+  let sources: Record<string, { type?: string }> = {};
+  try {
+    sources = map.getStyle?.()?.sources ?? {};
+  } catch {
+    return [];
+  }
+  const items: BuildingFootprint[] = [];
+  for (const [sourceId, spec] of Object.entries(sources)) {
+    if (spec?.type !== "vector") continue;
+    let found: TraceFeature[] = [];
+    try {
+      found = map.querySourceFeatures(sourceId, {
+        sourceLayer: BUILDING_SOURCE_LAYER,
+      });
+    } catch {
+      continue;
+    }
+    for (const feature of found) {
+      const bounds = geometryBounds(feature.geometry);
+      if (!bounds) continue;
+      items.push({
+        feature: {
+          ...feature,
+          source: sourceId,
+          sourceLayer: feature.sourceLayer ?? BUILDING_SOURCE_LAYER,
+          layer: feature.layer?.id
+            ? feature.layer
+            : { id: BUILDING_SOURCE_LAYER, type: "fill" },
+        },
+        ...bounds,
+      });
+    }
+  }
+  if (key && items.length > 0) footprintCache = { key, items };
+  return items;
+}
+
+function queryBuildingFootprints(
+  map: TraceMap,
+  point: MapPoint,
+  tolerance: number,
+): TraceFeature[] {
+  let items: BuildingFootprint[] = [];
+  try {
+    items = loadBuildingFootprints(map);
+  } catch {
+    return [];
+  }
+  if (items.length === 0) return [];
+  let center: { lng: number; lat: number };
+  let east: { lng: number; lat: number };
+  let south: { lng: number; lat: number };
+  try {
+    center = map.unproject([point.x, point.y]);
+    east = map.unproject([point.x + tolerance, point.y]);
+    south = map.unproject([point.x, point.y + tolerance]);
+  } catch {
+    return [];
+  }
+  const lngPad = Math.abs(east.lng - center.lng);
+  const latPad = Math.abs(south.lat - center.lat);
+  return items
+    .filter(
+      (item) =>
+        center.lng >= item.minLng - lngPad &&
+        center.lng <= item.maxLng + lngPad &&
+        center.lat >= item.minLat - latPad &&
+        center.lat <= item.maxLat + latPad,
+    )
+    .map((item) => item.feature);
+}
+
+function isBuildingFeature(feature: TraceFeature): boolean {
+  return (
+    isBuildingName(feature.layer?.id) || isBuildingName(feature.sourceLayer)
+  );
+}
+
+function prefersTraceCandidate(
+  item: { distance: number; feature: TraceFeature },
+  best: { distance: number; feature: TraceFeature },
+): boolean {
+  if (item.distance < best.distance - 0.01) return true;
+  if (best.distance < item.distance - 0.01) return false;
+  return isBuildingFeature(item.feature) && !isBuildingFeature(best.feature);
+}
+
 interface TraceCandidate {
   hit: TraceHit;
   feature: TraceFeature;
@@ -272,14 +434,17 @@ function pickTraceHit(
     : candidates;
   let best: (typeof pool)[number] | null = null;
   for (const item of pool) {
-    if (!best || item.distance < best.distance) best = item;
+    if (!best || prefersTraceCandidate(item, best)) best = item;
   }
   if (!best) return null;
+  const propertyId = best.feature.properties?.id;
+  const featureId = (best.feature as { id?: unknown }).id;
   const id =
-    typeof best.feature.properties?.id === "string" ||
-    typeof best.feature.properties?.id === "number"
-      ? String(best.feature.properties.id)
-      : `${best.feature.layer?.id ?? best.feature.sourceLayer ?? "trace"}:${best.coordinates[0][0].toFixed(5)},${best.coordinates[0][1].toFixed(5)}`;
+    typeof propertyId === "string" || typeof propertyId === "number"
+      ? String(propertyId)
+      : typeof featureId === "string" || typeof featureId === "number"
+        ? String(featureId)
+        : `${best.feature.layer?.id ?? best.feature.sourceLayer ?? "trace"}:${best.coordinates[0][0].toFixed(5)},${best.coordinates[0][1].toFixed(5)}`;
   return {
     hit: { id, coordinates: best.coordinates },
     feature: best.feature,
@@ -530,7 +695,10 @@ export function traceRenderedRoads(
   const tolerance = options.pixelTolerance ?? TRACE_PIXEL_TOLERANCE;
   const layers = listTraceLayers(map, options.layers);
   const filter = layers.length ? layers : undefined;
-  const features = queryAtPoint(map, screen, filter, tolerance);
+  const features = [
+    ...queryAtPoint(map, screen, filter, tolerance),
+    ...queryBuildingFootprints(map, screen, tolerance * 4),
+  ];
   const candidate = pickTraceHit(map, screen, features, tolerance * 4);
   if (!candidate) return null;
   if (options.splitAtJunctions === false) return candidate.hit;

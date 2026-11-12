@@ -3,6 +3,13 @@
 Release notes also appear on
 [GitHub Releases](https://github.com/orange-groove/react-map-annotate/releases).
 
+## 0.3.22
+
+- Trace follows a building footprint when the style never paints one. Satellite
+  streets draws buildings as imagery, so a click on a roof used to snap to the
+  nearest road. The pointer inside a footprint now keeps that outline, and a
+  click on the road beside it still takes the road.
+
 ## 0.3.21
 
 - Trace cuts a road at its crossroads and keeps the block under the pointer. A
